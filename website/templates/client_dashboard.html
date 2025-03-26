@@ -1,0 +1,765 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load custom_filters %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .performance-indicator {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        display: inline-block;
+    }
+
+    .performance-positive {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .performance-negative {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .performance-neutral {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+    }
+
+    .progress-thin {
+        height: 8px;
+    }
+
+    .platform-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        margin-right: 15px;
+    }
+
+    .platform-google {
+        background-color: #f8f9fa;
+        color: #4285F4;
+    }
+
+    .platform-facebook {
+        background-color: #f8f9fa;
+        color: #3b5998;
+    }
+
+    .platform-linkedin {
+        background-color: #f8f9fa;
+        color: #0077b5;
+    }
+
+    .platform-twitter {
+        background-color: #f8f9fa;
+        color: #1DA1F2;
+    }
+
+    .icon-circle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #f8f9fa;
+    }
+
+    .activity-item {
+        padding-left: 25px;
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+
+    .activity-item::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: -20px;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+
+    .activity-item:last-child::before {
+        display: none;
+    }
+
+    .activity-dot {
+        position: absolute;
+        left: 0;
+        top: 5px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    
+    .budget-status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-on-track {
+        background-color: #28a745;
+    }
+    
+    .status-underspend {
+        background-color: #17a2b8;
+    }
+    
+    .status-overspend {
+        background-color: #dc3545;
+    }
+    
+    .activity-feed {
+        border-radius: 0.25rem;
+    }
+
+    .activity-item {
+        display: flex;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-indicator {
+        width: 4px;
+        position: relative;
+    }
+
+    .activity-content {
+        flex: 1;
+        padding: 1rem 1.25rem;
+    }
+
+    .activity-title {
+        font-weight: 500;
+        font-size: 16px;
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-description {
+        font-size: 14px;
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-date {
+        font-size: 12px;
+        color: #adb5bd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'agency_dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ client.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if client.logo and client.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }} logo" class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-person" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">{{ client.name }}</h1>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
+                    aria-expanded="false">
+                    <i class="bi bi-calendar-event"></i> Last 30 Days
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item active" href="#">Last 30 Days</a></li>
+                    <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                    <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
+                    <li><a class="dropdown-item" href="#">This Month</a></li>
+                    <li><a class="dropdown-item" href="#">Last Month</a></li>
+                    <li><a class="dropdown-item" href="#">Custom Range</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Performance Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Impressions</div>
+                        <h3 class="mb-0">{{ impressions|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-eye"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    {% if impressions_change > 0 %}
+                    <span class="performance-indicator performance-positive">
+                        <i class="bi bi-arrow-up-short"></i> {{ impressions_change|floatformat:1 }}%
+                    </span>
+                    {% elif impressions_change < 0 %}
+                    <span class="performance-indicator performance-negative">
+                        <i class="bi bi-arrow-down-short"></i> {{ impressions_change|floatformat:1|abs }}%
+                    </span>
+                    {% else %}
+                    <span class="performance-indicator performance-neutral">
+                        <i class="bi bi-dash"></i> 0%
+                    </span>
+                    {% endif %}
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Clicks</div>
+                        <h3 class="mb-0">{{ clicks|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-cursor"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    {% if clicks_change > 0 %}
+                    <span class="performance-indicator performance-positive">
+                        <i class="bi bi-arrow-up-short"></i> {{ clicks_change|floatformat:1 }}%
+                    </span>
+                    {% elif clicks_change < 0 %}
+                    <span class="performance-indicator performance-negative">
+                        <i class="bi bi-arrow-down-short"></i> {{ clicks_change|floatformat:1|abs }}%
+                    </span>
+                    {% else %}
+                    <span class="performance-indicator performance-neutral">
+                        <i class="bi bi-dash"></i> 0%
+                    </span>
+                    {% endif %}
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Cost</div>
+                        <h3 class="mb-0">${{ cost|floatformat:2|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    {% if cost_change > 0 %}
+                    <span class="performance-indicator performance-positive">
+                        <i class="bi bi-arrow-up-short"></i> {{ cost_change|floatformat:1 }}%
+                    </span>
+                    {% elif cost_change < 0 %}
+                    <span class="performance-indicator performance-negative">
+                        <i class="bi bi-arrow-down-short"></i> {{ cost_change|floatformat:1|abs }}%
+                    </span>
+                    {% else %}
+                    <span class="performance-indicator performance-neutral">
+                        <i class="bi bi-dash"></i> 0%
+                    </span>
+                    {% endif %}
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Conversions</div>
+                        <h3 class="mb-0">{{ conversions|floatformat:0|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    {% if conversions_change > 0 %}
+                    <span class="performance-indicator performance-positive">
+                        <i class="bi bi-arrow-up-short"></i> {{ conversions_change|floatformat:1 }}%
+                    </span>
+                    {% elif conversions_change < 0 %}
+                    <span class="performance-indicator performance-negative">
+                        <i class="bi bi-arrow-down-short"></i> {{ conversions_change|floatformat:1|abs }}%
+                    </span>
+                    {% else %}
+                    <span class="performance-indicator performance-neutral">
+                        <i class="bi bi-dash"></i> 0%
+                    </span>
+                    {% endif %}
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overall Performance Trends Chart -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i> Performance Trends</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" data-metric="impressions">Impressions</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metric="clicks">Clicks</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metric="spend">Cost</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metric="conversions">Conversions</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="position-relative" style="height: 400px;">
+                    <canvas id="overallPerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clients Overview and Platform Performance -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i> Device Performance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center">
+                        <div class="display-6">{{ device_data.mobile.percentage }}%</div>
+                        <div><i class="bi bi-phone text-primary" style="font-size: 2rem;"></i></div>
+                        <div class="fw-medium">Mobile</div>
+                        <div class="small text-muted">{{ device_data.mobile.clicks }} clicks</div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="display-6">{{ device_data.desktop.percentage }}%</div>
+                        <div><i class="bi bi-laptop text-primary" style="font-size: 2rem;"></i></div>
+                        <div class="fw-medium">Desktop</div>
+                        <div class="small text-muted">{{ device_data.desktop.clicks }} clicks</div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="display-6">{{ device_data.tablet.percentage }}%</div>
+                        <div><i class="bi bi-tablet text-primary" style="font-size: 2rem;"></i></div>
+                        <div class="fw-medium">Tablet</div>
+                        <div class="small text-muted">{{ device_data.tablet.clicks }} clicks</div>
+                    </div>
+                </div>
+
+                <h6 class="mb-3">Device Performance Metrics</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th class="text-end">CTR</th>
+                                <th class="text-end">Conv. Rate</th>
+                                <th class="text-end">CPC</th>
+                                <th class="text-end">CPA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Mobile</td>
+                                <td class="text-end">{{ device_data.mobile.ctr }}%</td>
+                                <td class="text-end">{{ device_data.mobile.conversion_rate }}%</td>
+                                <td class="text-end">${{ device_data.mobile.cpc }}</td>
+                                <td class="text-end">${{ device_data.mobile.cpa }}</td>
+                            </tr>
+                            <tr>
+                                <td>Desktop</td>
+                                <td class="text-end">{{ device_data.desktop.ctr }}%</td>
+                                <td class="text-end">{{ device_data.desktop.conversion_rate }}%</td>
+                                <td class="text-end">${{ device_data.desktop.cpc }}</td>
+                                <td class="text-end">${{ device_data.desktop.cpa }}</td>
+                            </tr>
+                            <tr>
+                                <td>Tablet</td>
+                                <td class="text-end">{{ device_data.tablet.ctr }}%</td>
+                                <td class="text-end">{{ device_data.tablet.conversion_rate }}%</td>
+                                <td class="text-end">${{ device_data.tablet.cpc }}</td>
+                                <td class="text-end">${{ device_data.tablet.cpa }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i> Platform Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="position-relative" style="height: 200px;">
+                    <canvas id="platformDistributionChart"></canvas>
+                </div>
+                
+                <div class="mt-4">
+                    {% for platform in platform_distribution %}
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="platform-icon platform-{{ platform.slug }}">
+                            <i class="bi bi-{{ platform.icon }}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>{{ platform.name }}</div>
+                                <div>
+                                    <span class="fw-medium">${{ platform.spend|floatformat:2 }}</span>
+                                    <span class="text-muted">({{ platform.percentage|floatformat:1 }}%)</span>
+                                </div>
+                            </div>
+                            <div class="progress progress-thin mt-1">
+                                <div class="progress-bar" style="width: {{ platform.percentage }}%; background-color: {{ platform.color }}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-pie-chart text-muted" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No platform data available</p>
+                        <a href="{% url 'tenant_platforms' %}" class="btn btn-sm btn-outline-primary mt-1">
+                            <i class="bi bi-plus-circle me-1"></i> Connect Platforms
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Geographic Distribution -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i> Geographic Performance</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active">Top Regions</button>
+                    <button type="button" class="btn btn-outline-secondary">Top Cities</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="position-relative" style="height: 300px;">
+                            <canvas id="mapChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <h6 class="mb-3">Top Performing Regions</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Region</th>
+                                        <th class="text-end">Clicks</th>
+                                        <th class="text-end">Conversions</th>
+                                        <th class="text-end">Conv. Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for region in geo_performance %}
+                                    <tr>
+                                        <td>{{ region.region }}</td>
+                                        <td class="text-end">{{ region.clicks }}</td>
+                                        <td class="text-end">{{ region.conversions }}</td>
+                                        <td class="text-end">{{ region.conversion_rate }}%</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">
+                                            No geographic data available
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-activity me-2"></i> Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="activity-feed">
+                    {% for activity in recent_activity %}
+                    <div class="activity-item">
+                        <div class="activity-dot bg-{% if activity.type == 'budget' %}danger{% elif activity.type == 'performance' %}success{% elif activity.type == 'optimization' %}info{% else %}primary{% endif %} text-white">
+                            <i class="bi bi-{{ activity.icon }}" style="font-size: 0.75rem;"></i>
+                        </div>
+                        <div>
+                            <div class="fw-medium">{{ activity.title }}</div>
+                            <div class="small text-muted">{{ activity.description }}</div>
+                            <div class="small text-muted">{{ activity.timestamp }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-activity text-muted" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No recent activity recorded</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Overall Performance Chart
+    const performanceCtx = document.getElementById('overallPerformanceChart');
+    if (performanceCtx) {
+        const performanceChart = new Chart(performanceCtx, {
+            type: 'line',
+            data: {
+                labels: {{ performance_dates|safe }},
+                datasets: [
+                    {
+                        label: 'Impressions',
+                        data: {{ performance_impressions|safe }},
+                        borderColor: 'rgba(50, 31, 219, 1)',
+                        backgroundColor: 'rgba(50, 31, 219, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Clicks',
+                        data: {{ performance_clicks|safe }},
+                        borderColor: 'rgba(39, 174, 96, 1)',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        hidden: true
+                    },
+                    {
+                        label: 'Spend',
+                        data: {{ performance_cost|safe }},
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        hidden: true
+                    },
+                    {
+                        label: 'Conversions',
+                        data: {{ performance_conversions|safe }},
+                        borderColor: 'rgba(243, 156, 18, 1)',
+                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        hidden: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Toggle between different metrics
+        const metricButtons = document.querySelectorAll('[data-metric]');
+        metricButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active button
+                metricButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                const metric = this.dataset.metric;
+                
+                // Show only selected metric
+                performanceChart.data.datasets.forEach(dataset => {
+                    if (dataset.label.toLowerCase() === metric) {
+                        dataset.hidden = false;
+                    } else {
+                        dataset.hidden = true;
+                    }
+                });
+                
+                performanceChart.update();
+            });
+        });
+    }
+    
+    // Platform Distribution Chart
+    const distributionCtx = document.getElementById('platformDistributionChart');
+    if (distributionCtx) {
+        const distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ platform_labels|safe }},
+                datasets: [{
+                    data: {{ platform_data|safe }},
+                    backgroundColor: {{ platform_colors|safe }},
+                    borderColor: {{ platform_border_colors|default:platform_colors|safe }},
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        align: 'start',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed.toFixed(2) + ' (' + 
+                                       ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1) + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Map Chart
+    const mapCtx = document.getElementById('mapChart');
+    if (mapCtx) {
+        const mapChart = new Chart(mapCtx, {
+            type: 'bar',
+            data: {
+                labels: {% if geo_performance %}[{% for region in geo_performance %}"{{ region.region }}"{% if not forloop.last %},{% endif %}{% endfor %}]{% else %}[]{% endif %},
+                datasets: [
+                    {
+                        label: 'Clicks',
+                        data: {% if geo_performance %}[{% for region in geo_performance %}{{ region.clicks }}{% if not forloop.last %},{% endif %}{% endfor %}]{% else %}[]{% endif %},
+                        backgroundColor: 'rgba(50, 31, 219, 0.6)',
+                        borderColor: 'rgba(50, 31, 219, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Conversions',
+                        data: {% if geo_performance %}[{% for region in geo_performance %}{{ region.conversions }}{% if not forloop.last %},{% endif %}{% endfor %}]{% else %}[]{% endif %},
+                        backgroundColor: 'rgba(231, 76, 60, 0.6)',
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

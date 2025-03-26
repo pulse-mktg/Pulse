@@ -1,0 +1,54 @@
+/* Client dropdown specific styles */
+
+/* Make sure the client items have proper contrast */
+.nav-group-items .client-item .sidebar-nav-link {
+  color: var(--cui-sidebar-nav-link-color, rgba(255, 255, 255, 0.6));
+  background: transparent;
+}
+
+/* Improve hover state */
+.nav-group-items .client-item .sidebar-nav-link:hover {
+  color: var(--cui-sidebar-nav-link-hover-color, rgba(255, 255, 255, 0.8));
+  background: var(--cui-sidebar-nav-link-hover-bg, rgba(0, 0, 21, 0.2));
+}
+
+/* Style for active client */
+.nav-group-items .client-item .sidebar-nav-link.active {
+  color: var(--cui-sidebar-nav-link-active-color, #fff);
+  background: var(--cui-sidebar-nav-link-active-bg, rgba(0, 0, 21, 0.2));
+}
+
+/* Search input styling */
+.nav-group-items .input-group-sm input.form-control {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-group-items .input-group-sm .input-group-text {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Override any CoreUI styles that might affect the dropdown */
+.sidebar-dark .nav-group-items {
+  background-color: inherit !important;
+}
+
+.sidebar-dark .nav-group.show {
+  background-color: inherit !important;
+}
+
+/* Make sure text truncation works properly */
+.nav-group-items .client-item .text-truncate {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Client badge styling */
+.nav-group-items .badge.bg-success {
+  color: white;
+}

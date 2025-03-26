@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ client.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if client.logo and client.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }} logo" class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-person" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">{{ client.name }}</h1>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
+                    aria-expanded="false">
+                    Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'client_detail' client.id %}">
+                            <i class="bi bi-info-circle me-2"></i> Client Details
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'edit_client' client.id %}">
+                            <i class="bi bi-pencil me-2"></i> Edit Client
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'connect_platform' client.id %}">
+                            <i class="bi bi-link-45deg me-2"></i> Connect Platform
+                        </a>
+                    </li>
+                    {% if platform_accounts %}
+                    <li>
+                        <a class="dropdown-item" href="{% url 'campaign_budget_dashboard' client.id %}">
+                            <i class="bi bi-cash-stack me-2"></i> Campaign Budgets
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="{% url 'archive_client' client.id %}"
+                            onclick="return confirm('Are you sure you want to archive this client?');">
+                            <i class="bi bi-trash me-2"></i> Archive Client
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Overview Card -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Client Overview</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-5">Company Size:</dt>
+                    <dd class="col-sm-7">{{ client.get_company_size_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Revenue Range:</dt>
+                    <dd class="col-sm-7">{{ client.get_revenue_range_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Geographic Focus:</dt>
+                    <dd class="col-sm-7">{{ client.get_geographic_focus_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Marketing Maturity:</dt>
+                    <dd class="col-sm-7">{{ client.get_marketing_maturity_display|default:"Not specified" }}</dd>
+                </dl>
+                
+                <div class="text-center mt-3">
+                    <a href="{% url 'client_detail' client.id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-info-circle me-1"></i> View Full Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Connected Platforms</h5>
+            </div>
+            <div class="card-body">
+                {% if platform_accounts %}
+                <div class="row">
+                    {% for account in platform_accounts %}
+                    <div class="col-md-6 mb-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-2">
+                                    <i class="bi {{ account.platform_connection.platform_type.icon_class }}" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">{{ account.platform_connection.platform_type.name }}</h6>
+                                    <small class="text-muted">{{ account.platform_client_name }}</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2 text-center">
+                                {% if account.platform_connection.platform_type.slug == 'google-ads' %}
+                                <a href="{% url 'google_ads_campaigns' client.id account.id %}" class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="bi bi-graph-up me-1"></i> View Campaigns
+                                </a>
+                                {% else %}
+                                <a href="#" class="btn btn-sm btn-outline-secondary w-100 disabled">
+                                    <i class="bi bi-graph-up me-1"></i> View Data
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No platform accounts connected yet.</p>
+                    <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Connect Platform
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Groups & Budgets Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Client Groups</h5>
+                <a href="{% url 'client_groups' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-collection me-1"></i> Manage Groups
+                </a>
+            </div>
+            <div class="card-body">
+                {% if client_groups %}
+                <div class="list-group">
+                    {% for group in client_groups %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge me-2" style="background-color: {{ group.color }};">
+                                <i class="bi {{ group.icon_class }}"></i>
+                            </span>
+                            {{ group.name }}
+                            {% if group.is_auto_generated %}
+                            <span class="badge bg-light text-dark ms-1">Auto</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ group.client_count }} clients</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-collection" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">This client is not part of any groups yet.</p>
+                    <a href="{% url 'client_groups' %}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Add to Group
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Active Budgets</h5>
+                <a href="{% url 'create_budget' %}?client_id={{ client.id }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Create Budget
+                </a>
+            </div>
+            <div class="card-body">
+                {% if client_budgets %}
+                <div class="list-group">
+                    {% for budget in client_budgets %}
+                    <a href="{% url 'budget_detail' budget.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ budget.name }}</h6>
+                                <small class="text-muted">
+                                    {{ budget.start_date|date:"M d, Y" }} - {{ budget.end_date|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">${{ budget.amount|floatformat:2 }}</div>
+                                <small class="text-muted">{{ budget.get_frequency_display }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-cash-stack" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No active budgets found for this client.</p>
+                    <a href="{% url 'create_budget' %}?client_id={{ client.id }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Create Budget
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics Section (Placeholder) -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Metrics</h5>
+            </div>
+            <div class="card-body text-center py-5">
+                <i class="bi bi-graph-up" style="font-size: 3rem; color: #8a93a2;"></i>
+                <h5 class="mt-3">Performance Metrics Coming Soon</h5>
+                <p class="text-muted mb-0">Connect platform accounts to see performance metrics here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,219 @@
+/**
+ * pulse-components.css
+ * UI component styles like cards, buttons, badges
+ */
+
+/* Card Styles */
+.card {
+  box-shadow: 0 1px 1px 0 rgba(60, 75, 100, .14), 
+              0 2px 1px -1px rgba(60, 75, 100, .12), 
+              0 1px 3px 0 rgba(60, 75, 100, .2);
+  margin-bottom: 1.5rem;
+  overflow: visible;
+}
+
+.card-header {
+  background-color: #fff;
+  border-bottom: 1px solid #ebeef4;
+  padding: 0.75rem 1.25rem;
+}
+
+.card-body {
+  overflow: visible;
+}
+
+/* Button Styles */
+.btn-primary { --cui-btn-bg: #321fdb; --cui-btn-border-color: #321fdb; }
+.btn-success { --cui-btn-bg: #2eb85c; --cui-btn-border-color: #2eb85c; }
+.btn-danger { --cui-btn-bg: #e55353; --cui-btn-border-color: #e55353; }
+.btn-warning { --cui-btn-bg: #f9b115; --cui-btn-border-color: #f9b115; }
+.btn-info { --cui-btn-bg: #39f; --cui-btn-border-color: #39f; }
+
+/* Sidebar Brand Styles */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: rgba(255, 255, 255, 0.87);
+  font-size: 1.25rem;
+  font-weight: 600;
+  background: rgba(0, 0, 21, 0.2);
+}
+
+.sidebar-brand-icon {
+  margin-right: 0.5rem;
+  font-size: 1.5rem;
+}
+
+/* Sidebar Nav Link Styles */
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.8125rem 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-nav-link:hover {
+  color: rgba(255, 255, 255, 0.87);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav-link.active {
+  color: rgba(255, 255, 255, 0.87);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-nav-icon {
+  flex: 0 0 4rem;
+  height: 1.25rem;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+/* Accordion Styles */
+.accordion-button {
+  position: relative;
+  z-index: 1;
+}
+
+.action-buttons {
+  position: relative;
+  z-index: 2;
+}
+
+/* Table Styles */
+.table {
+  overflow: visible;
+}
+
+.table-responsive {
+  overflow: visible;
+}
+
+.table tbody tr {
+  position: static;
+}
+
+.table td {
+  position: relative;
+}
+
+/* Dropdown Styles - Fixed for z-index issues */
+.table .dropdown {
+  position: relative;
+  z-index: 1050;
+}
+
+.table .dropdown-menu {
+  position: absolute !important;
+  z-index: 9999 !important;
+  min-width: 10rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+  display: block;
+}
+
+.dropdown-menu-end {
+  right: 0;
+  left: auto;
+}
+
+/* Icon Circle for Stats */
+.icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+}
+
+.icon-circle i {
+  font-size: 1.5rem;
+}
+
+/* Animation for dropdown menus */
+.dropdown-menu {
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Ensure all parent containers allow overflow */
+.body {
+  overflow: visible !important;
+}
+
+.wrapper {
+  overflow: visible !important;
+}
+
+/* Reset default dropdown styles */
+.dropdown-menu.show {
+  display: block;
+}
+/* Add this CSS to your pulse-components.css file or in a style block in your template */
+
+.timeline {
+  position: relative;
+  padding: 1rem 0;
+}
+
+.activity-item {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 1.5rem;
+}
+
+.activity-item:last-child {
+  margin-bottom: 0;
+}
+
+.activity-item::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 22px;
+  bottom: -28px;
+  width: 2px;
+  background-color: #e9ecef;
+}
+
+.activity-item:last-child::before {
+  display: none;
+}
+
+.activity-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* Updated colors */
+.activity-dot.bg-danger {
+  background-color: #dc3545;
+}
+
+.activity-dot.bg-primary {
+  background-color: #0d6efd;
+}
+
+.activity-dot.bg-success {
+  background-color: #198754;
+}
+
+.activity-dot.bg-info {
+  background-color: #0dcaf0;
+}

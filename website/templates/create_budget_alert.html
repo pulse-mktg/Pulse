@@ -1,0 +1,87 @@
+<!-- create_budget_alert.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'budget_dashboard' %}">Budgets</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'budget_detail' budget.id %}">{{ budget.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Create Alert</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Create Budget Alert</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6>Budget: {{ budget.name }}</h6>
+                    <p class="text-muted">Configure an alert to be notified when budget thresholds are reached.</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_alert_type" class="form-label">Alert Type <span class="text-danger">*</span></label>
+                        {{ form.alert_type.errors }}
+                        <select name="alert_type" id="id_alert_type" class="form-select {% if form.alert_type.errors %}is-invalid{% endif %}" required>
+                            {% for value, label in form.fields.alert_type.choices %}
+                            <option value="{{ value }}" {% if form.alert_type.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">The type of budget situation to monitor</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_threshold" class="form-label">Threshold (%) <span class="text-danger">*</span></label>
+                        {{ form.threshold.errors }}
+                        <input type="number" name="threshold" id="id_threshold" value="{{ form.threshold.value|default:'' }}" class="form-control {% if form.threshold.errors %}is-invalid{% endif %}" min="1" max="200" step="0.1" required>
+                        <div class="form-text">
+                            Alert when budget reaches this percentage threshold. For overspend alerts, use values over 100%.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notification Methods</label>
+                        <div class="form-check">
+                            {{ form.is_email_enabled.errors }}
+                            <input type="checkbox" name="is_email_enabled" id="id_is_email_enabled" class="form-check-input" {% if form.is_email_enabled.value %}checked{% endif %}>
+                            <label for="id_is_email_enabled" class="form-check-label">
+                                <i class="bi bi-envelope me-1"></i> Email Notification
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.is_dashboard_enabled.errors }}
+                            <input type="checkbox" name="is_dashboard_enabled" id="id_is_dashboard_enabled" class="form-check-input" {% if form.is_dashboard_enabled.value %}checked{% endif %}>
+                            <label for="id_is_dashboard_enabled" class="form-check-label">
+                                <i class="bi bi-speedometer2 me-1"></i> Dashboard Alert
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="border-top pt-4 mt-4">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'budget_detail' budget.id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-bell me-1"></i> Create Alert
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

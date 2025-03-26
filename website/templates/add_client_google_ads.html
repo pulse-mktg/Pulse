@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">{{ client.name }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">Platform Accounts</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Add Google Ads Account</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-google me-2"></i> Add Google Ads Account
+                </h5>
+                <span class="badge bg-info">{{ client.name }}</span>
+            </div>
+            <div class="card-body">
+                {% if not connections %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    No Google Ads connections found for your tenant. Please connect Google Ads at the tenant level first.
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'tenant_platforms' %}" class="btn btn-primary">
+                        <i class="bi bi-link-45deg me-1"></i> Go to Platform Connections
+                    </a>
+                </div>
+                {% else %}
+
+                <form method="post" id="googleAdsForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Select Google Ads Connection</label>
+                        {% if connections.count > 1 %}
+                        <select name="connection_id" class="form-select" id="connectionSelect">
+                            <option value="">-- Select a connection --</option>
+                            {% for connection in connections %}
+                            <option value="{{ connection.id }}" {% if selected_connection and selected_connection.id == connection.id %}selected{% endif %}>
+                                {{ connection.platform_account_name }} ({{ connection.platform_account_email }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Choose the Google Ads connection to use for this client.</div>
+                        {% else %}
+                        <input type="hidden" name="connection_id" value="{{ connections.first.id }}">
+                        <div class="alert alert-secondary">
+                            Using connection: {{ connections.first.platform_account_name }} ({{ connections.first.platform_account_email }})
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if selected_connection %}
+                    <div id="accountSelectionSection">
+                        <div class="mb-4">
+                            <label class="form-label">Select Google Ads Account</label>
+                            
+                            {% if available_accounts %}
+                            <div class="list-group mb-3" id="accountsList">
+                                {% for account in available_accounts %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="form-check">
+                                        <input class="form-check-input account-select" type="radio" name="selected_account" 
+                                               id="account{{ forloop.counter }}" value="{{ account.id }}">
+                                        <label class="form-check-label w-100" for="account{{ forloop.counter }}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ account.name }}</strong>
+                                                    <div class="text-muted small">ID: {{ account.id }}</div>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                No Google Ads accounts found for this connection. Make sure the connected account has access to Google Ads accounts.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div id="manualEntrySection" {% if selected_connection and available_accounts %}class="d-none"{% endif %}>
+                        <div class="mb-4">
+                            <label for="id_platform_client_id" class="form-label">Google Ads Customer ID</label>
+                            {{ form.platform_client_id }}
+                            <div class="form-text">Enter the Customer ID in the format '123-456-7890'</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_platform_client_name" class="form-label">Account Name</label>
+                            {{ form.platform_client_name }}
+                            <div class="form-text">Enter a descriptive name for this Google Ads account</div>
+                        </div>
+                    </div>
+
+                    {% if selected_connection and available_accounts %}
+                    <div class="mb-3">
+                        <button type="button" id="toggleManualEntry" class="btn btn-link ps-0">
+                            <i class="bi bi-pencil me-1"></i> Enter account details manually
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i> Add Account
+                        </button>
+                        <a href="{% url 'client_detail' client.id %}" class="btn btn-outline-secondary ms-2">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const connectionSelect = document.getElementById('connectionSelect');
+        const accountSelectionSection = document.getElementById('accountSelectionSection');
+        const manualEntrySection = document.getElementById('manualEntrySection');
+        const toggleManualEntry = document.getElementById('toggleManualEntry');
+        const accountsList = document.getElementById('accountsList');
+        const form = document.getElementById('googleAdsForm');
+
+        // Handle connection selection change
+        if (connectionSelect) {
+            connectionSelect.addEventListener('change', function() {
+                const connectionId = this.value;
+                if (connectionId) {
+                    window.location.href = `?connection_id=${connectionId}`;
+                }
+            });
+        }
+
+        // Handle toggle between account selection and manual entry
+        if (toggleManualEntry) {
+            toggleManualEntry.addEventListener('click', function() {
+                if (manualEntrySection.classList.contains('d-none')) {
+                    // Switch to manual entry
+                    accountSelectionSection.classList.add('d-none');
+                    manualEntrySection.classList.remove('d-none');
+                    this.innerHTML = '<i class="bi bi-list me-1"></i> Select from available accounts';
+                } else {
+                    // Switch to account selection
+                    accountSelectionSection.classList.remove('d-none');
+                    manualEntrySection.classList.add('d-none');
+                    this.innerHTML = '<i class="bi bi-pencil me-1"></i> Enter account details manually';
+                }
+            });
+        }
+
+        // Handle account selection
+        if (accountsList) {
+            const accountRadios = document.querySelectorAll('.account-select');
+            accountRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        // Get account details
+                        const label = this.parentElement.querySelector('label');
+                        const accountName = label.querySelector('strong').textContent;
+                        const accountId = this.value;
+                        
+                        // Set form values
+                        document.getElementById('id_platform_client_id').value = accountId;
+                        document.getElementById('id_platform_client_name').value = accountName;
+                    }
+                });
+            });
+        }
+
+        // Handle form submission
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const clientId = document.getElementById('id_platform_client_id').value;
+                const clientName = document.getElementById('id_platform_client_name').value;
+                
+                if (!clientId || !clientName) {
+                    e.preventDefault();
+                    alert('Please enter both a Customer ID and Account Name');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

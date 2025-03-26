@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'tenant_platforms' %}">Platform Connections</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Manage {{ connection.platform_type.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi {{ connection.platform_type.icon_class }} me-2"></i>
+                    {{ connection.platform_type.name }} Connection
+                </h5>
+                <span class="badge {% if connection.connection_status == 'active' %}bg-success{% elif connection.connection_status == 'expired' %}bg-warning{% else %}bg-danger{% endif %}">
+                    {% if connection.connection_status == 'active' %}Active{% elif connection.connection_status == 'expired' %}Token Expired{% else %}{{ connection.connection_status|title }}{% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Platform:</dt>
+                    <dd class="col-sm-8">{{ connection.platform_type.name }}</dd>
+                    
+                    <dt class="col-sm-4">Account Name:</dt>
+                    <dd class="col-sm-8">
+                        {% if connection.platform_account_name %}
+                            {{ connection.platform_account_name }}
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Account Email:</dt>
+                    <dd class="col-sm-8">
+                        {% if connection.platform_account_email %}
+                            {{ connection.platform_account_email }}
+                        {% else %}
+                            <span class="text-muted">Not specified</span>
+                        {% endif %}
+                    </dd>
+                    
+                    {% if connection.platform_account_id %}
+                    <dt class="col-sm-4">Account ID:</dt>
+                    <dd class="col-sm-8">{{ connection.platform_account_id }}</dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-4">Connected By:</dt>
+                    <dd class="col-sm-8">{{ connection.connected_user.get_full_name|default:connection.connected_user.username }}</dd>
+                    
+                    <dt class="col-sm-4">Connection Date:</dt>
+                    <dd class="col-sm-8">{{ connection.created_at|date:"F j, Y g:i A" }}</dd>
+                    
+                    <dt class="col-sm-4">Last Sync:</dt>
+                    <dd class="col-sm-8">
+                        {% if connection.last_synced %}
+                            {{ connection.last_synced|date:"F j, Y g:i A" }}
+                        {% else %}
+                            <span class="text-muted">Never</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Token Expiry:</dt>
+                    <dd class="col-sm-8">
+                        {% if connection.token_expiry %}
+                            {{ connection.token_expiry|date:"F j, Y g:i A" }}
+                            {% if connection.is_token_expired %}
+                                <span class="badge bg-danger ms-2">Expired</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">Not applicable</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+                
+                {% if connection.status_message %}
+                <div class="alert alert-warning mt-3">
+                    <strong>Status Message:</strong> {{ connection.status_message }}
+                </div>
+                {% endif %}
+                
+                {% if account_info %}
+                <h6 class="mt-4 mb-3">Account Information</h6>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            {% for key, value in account_info.items %}
+                            <dt class="col-sm-4">{{ key|title }}:</dt>
+                            <dd class="col-sm-8">{{ value }}</dd>
+                            {% endfor %}
+                        </dl>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <hr>
+                
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="refresh">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-arrow-repeat me-1"></i> Refresh Token
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="test">
+                            <button type="submit" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-check-circle me-1"></i> Test Connection
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" onsubmit="return confirm('Are you sure you want to disconnect from {{ connection.platform_type.name }}?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="disconnect">
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-circle me-1"></i> Disconnect
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

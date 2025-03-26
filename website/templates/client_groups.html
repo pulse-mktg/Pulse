@@ -1,0 +1,831 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Group icon and color preview */
+    .group-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        color: white;
+        margin-right: 10px;
+    }
+    
+    /* Expandable row styling */
+    .group-details-container {
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+    }
+    
+    .expand-btn {
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+    }
+    
+    .expand-btn:hover {
+        color: #321fdb;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 50%;
+    }
+    
+    .expand-btn.expanded i {
+        transform: rotate(180deg);
+    }
+    
+    /* Client list styling */
+    .client-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .client-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background-color: white;
+        border-radius: 0.375rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .client-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    /* Modal styling */
+    .client-checkbox-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+    }
+    
+    .client-checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .client-checkbox-item:last-child {
+        border-bottom: none;
+    }
+    
+    .color-preview {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .icon-preview {
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .client-search {
+        margin-bottom: 1rem;
+    }
+    
+    .client-count-badge {
+        font-size: 0.85rem;
+        font-weight: normal;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Groups</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <h1 class="page-title mb-0">Groups</h1>
+            <button type="button" class="btn btn-primary" data-coreui-toggle="modal" data-coreui-target="#createGroupModal">
+                <i class="bi bi-plus-circle me-1"></i> Create Group
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Manage Groups</h5>
+                    <div>
+                        <div class="input-group">
+                            <input type="text" id="groupSearchInput" class="form-control form-control-sm" placeholder="Search groups...">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if groups %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;"></th>
+                                <th style="width: 35%">Group Name</th>
+                                <th style="width: 35%">Description</th>
+                                <th class="text-center">Clients</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in groups %}
+                            <tr class="group-row" data-group-id="{{ group.id }}" data-group-name="{{ group.name }}">
+                                <td>
+                                    <button class="expand-btn" type="button" 
+                                            aria-expanded="false" aria-controls="group-details-{{ group.id }}">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </td>
+                                <!-- Add a badge to indicate auto-generated groups -->
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2" style="width: 20px; height: 20px; background-color: {{ group.color }}; border-radius: 4px;"></div>
+                                        <span>
+                                            <i class="bi {{ group.icon_class }} me-2"></i>{{ group.name }}
+                                            {% if group.is_auto_generated %}
+                                            <span class="badge bg-info ms-1">Auto</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ group.description|default:"No description provided."|truncatechars:60 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="client-count-badge">{{ group.client_count }} Client{{ group.client_count|pluralize }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        {% if not group.is_auto_generated %}
+                                            <button type="button" class="btn btn-sm btn-outline-primary edit-group-btn" 
+                                                    data-group-id="{{ group.id }}" 
+                                                    data-group-name="{{ group.name }}"
+                                                    data-group-description="{{ group.description }}"
+                                                    data-group-color="{{ group.color }}"
+                                                    data-group-icon="{{ group.icon_class }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-group-btn"
+                                                    data-group-id="{{ group.id }}" 
+                                                    data-group-name="{{ group.name }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Auto-generated groups cannot be edited">
+                                                <i class="bi bi-lock"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="group-details-row" style="display: none;">
+                                <td colspan="5" class="p-0">
+                                    <div id="group-details-{{ group.id }}" class="group-details-container">
+                                        <h6 class="mb-3">Clients in this Group:</h6>
+                                        <div id="client-list-{{ group.id }}" class="client-grid">
+                                            <div class="text-center py-3">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                                <span class="ms-2">Loading clients...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-collection" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No Groups have been created yet.</p>
+                    <button type="button" class="btn btn-primary mt-2" data-coreui-toggle="modal" data-coreui-target="#createGroupModal">
+                        <i class="bi bi-plus-circle me-1"></i> Create First Group
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createGroupModalLabel">Create New Client Group</h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'create_client_group' %}" id="createGroupForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Group Name</label>
+                        <input type="text" name="name" id="id_name" class="form-control" placeholder="Group Name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        <textarea name="description" id="id_description" class="form-control" placeholder="Description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_color" class="form-label">Group Color</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <div id="colorPreview" class="color-preview"></div>
+                                </span>
+                                <input type="color" name="color" id="id_color" class="form-control" value="#6c757d">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_icon_class" class="form-label">Icon</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <div id="iconPreview" class="icon-preview">
+                                        <i class="bi bi-collection"></i>
+                                    </div>
+                                </span>
+                                <input type="text" name="icon_class" id="id_icon_class" class="form-control" placeholder="bi-collection" value="bi-collection">
+                            </div>
+                            <div class="form-text">Use Bootstrap Icons class (e.g., bi-collection)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Clients in this Group</label>
+                        <div class="form-text mb-2">
+                            Select the clients you want to include in this group:
+                        </div>
+                        <input type="text" id="clientSearchCreate" class="form-control client-search" placeholder="Search clients...">
+                        <div class="client-checkbox-list">
+                            {% for client in all_clients %}
+                            <div class="client-checkbox-item create-client-item">
+                                <div class="form-check">
+                                    <input type="checkbox" name="clients" value="{{ client.id }}" id="client_{{ client.id }}" class="form-check-input">
+                                    <label for="client_{{ client.id }}" class="form-check-label">{{ client.name }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal fade" id="editGroupModal" tabindex="-1" aria-labelledby="editGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editGroupModalLabel">Edit Client Group</h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="editGroupForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Group Name</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" placeholder="Group Name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">Description</label>
+                        <textarea name="description" id="edit_description" class="form-control" placeholder="Description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_color" class="form-label">Group Color</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <div id="editColorPreview" class="color-preview"></div>
+                                </span>
+                                <input type="color" name="color" id="edit_color" class="form-control">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="edit_icon_class" class="form-label">Icon</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <div id="editIconPreview" class="icon-preview">
+                                        <i class="bi bi-collection"></i>
+                                    </div>
+                                </span>
+                                <input type="text" name="icon_class" id="edit_icon_class" class="form-control" placeholder="bi-collection">
+                            </div>
+                            <div class="form-text">Use Bootstrap Icons class (e.g., bi-collection)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Clients in this Group</label>
+                        <div class="form-text mb-2">
+                            Select the clients you want to include in this group:
+                        </div>
+                        <input type="text" id="clientSearchEdit" class="form-control client-search" placeholder="Search clients...">
+                        <div id="editClientList" class="client-checkbox-list">
+                            <!-- Will be populated with JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Group Modal -->
+<div class="modal fade" id="deleteGroupModal" tabindex="-1" aria-labelledby="deleteGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteGroupModalLabel">Delete Client Group</h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the group <strong id="deleteGroupName"></strong>?</p>
+                <p>This action cannot be undone, but the clients themselves will not be affected.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-coreui-dismiss="modal">Cancel</button>
+                <form method="post" id="deleteGroupForm">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setupColorAndIconPreviews();
+        setupEditButtons();
+        setupDeleteButtons();
+        setupFormSubmissions();
+        setupClientSearch();
+        setupGroupSearch();
+        setupExpandableRows();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const editGroupId = urlParams.get('edit');
+        if (editGroupId) {
+            // Find the edit button for this group and click it
+            const editButton = document.querySelector(`.edit-group-btn[data-group-id="${editGroupId}"]`);
+            if (editButton) {
+                setTimeout(() => {
+                    editButton.click();
+                }, 500); // Short delay to ensure page is fully loaded
+            }
+        }
+    });
+    
+    function setupExpandableRows() {
+        // Initialize expandable rows
+        document.querySelectorAll('.expand-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const groupRow = this.closest('.group-row');
+                const groupId = groupRow.getAttribute('data-group-id');
+                const detailsRow = groupRow.nextElementSibling;
+                
+                // Toggle visibility of details row
+                if (detailsRow.style.display === 'none') {
+                    detailsRow.style.display = 'table-row';
+                    this.classList.add('expanded');
+                    this.querySelector('i').classList.replace('bi-chevron-down', 'bi-chevron-up');
+                    
+                    // Load client data if not already loaded
+                    const clientList = document.getElementById(`client-list-${groupId}`);
+                    if (clientList.querySelector('.spinner-border')) {
+                        fetchAndPopulateClientList(groupId);
+                    }
+                } else {
+                    detailsRow.style.display = 'none';
+                    this.classList.remove('expanded');
+                    this.querySelector('i').classList.replace('bi-chevron-up', 'bi-chevron-down');
+                }
+            });
+        });
+    }
+    
+    function fetchAndPopulateClientList(groupId) {
+        const clientListElement = document.getElementById(`client-list-${groupId}`);
+        
+        fetch(`/client-groups/${groupId}/clients-json/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                clientListElement.innerHTML = '';
+                
+                if (data.all_clients && data.group_clients.length > 0) {
+                    // Filter to only show clients in this group
+                    const groupClients = data.all_clients.filter(client => 
+                        data.group_clients.includes(client.id)
+                    );
+                    
+                    groupClients.forEach(client => {
+                        const item = document.createElement('div');
+                        item.className = 'client-item';
+                        
+                        item.innerHTML = `
+                            <div class="client-icon">
+                                <i class="bi bi-person-circle" style="font-size: 0.8rem;"></i>
+                            </div>
+                            <a href="/client/${client.id}/" class="text-decoration-none">${client.name}</a>
+                        `;
+                        
+                        clientListElement.appendChild(item);
+                    });
+                } else {
+                    clientListElement.innerHTML = '<div class="text-center py-3 text-muted">No clients in this group</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching clients:', error);
+                clientListElement.innerHTML = '<div class="text-center py-3 text-danger">Error loading clients</div>';
+            });
+    }
+    
+    function setupGroupSearch() {
+        const searchInput = document.getElementById('groupSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('.group-row');
+                
+                rows.forEach(row => {
+                    const groupName = row.getAttribute('data-group-name').toLowerCase();
+                    const detailsRow = row.nextElementSibling;
+                    
+                    if (groupName.includes(searchTerm)) {
+                        row.style.display = '';
+                        // Keep details row display status consistent when filtering
+                        if (row.querySelector('.expand-btn').classList.contains('expanded')) {
+                            detailsRow.style.display = 'table-row';
+                        } else {
+                            detailsRow.style.display = 'none';
+                        }
+                    } else {
+                        row.style.display = 'none';
+                        detailsRow.style.display = 'none';
+                    }
+                });
+            });
+        }
+    }
+    
+    function setupColorAndIconPreviews() {
+        // Create modal color and icon previews
+        const colorInput = document.getElementById('id_color');
+        const colorPreview = document.getElementById('colorPreview');
+        
+        if (colorInput && colorPreview) {
+            // Initialize color preview
+            colorPreview.style.backgroundColor = colorInput.value;
+            
+            // Update color preview when input changes
+            colorInput.addEventListener('input', function() {
+                colorPreview.style.backgroundColor = this.value;
+            });
+        }
+        
+        const iconInput = document.getElementById('id_icon_class');
+        const iconPreview = document.getElementById('iconPreview')?.querySelector('i');
+        
+        if (iconInput && iconPreview) {
+            // Update icon preview when input changes
+            iconInput.addEventListener('input', function() {
+                iconPreview.className = 'bi ' + this.value;
+            });
+        }
+        
+        // Edit modal color and icon previews
+        const editColorInput = document.getElementById('edit_color');
+        const editColorPreview = document.getElementById('editColorPreview');
+        
+        if (editColorInput && editColorPreview) {
+            // Update color preview when input changes
+            editColorInput.addEventListener('input', function() {
+                editColorPreview.style.backgroundColor = this.value;
+            });
+        }
+        
+        const editIconInput = document.getElementById('edit_icon_class');
+        const editIconPreview = document.getElementById('editIconPreview')?.querySelector('i');
+        
+        if (editIconInput && editIconPreview) {
+            // Update icon preview when input changes
+            editIconInput.addEventListener('input', function() {
+                editIconPreview.className = 'bi ' + this.value;
+            });
+        }
+    }
+    
+    function setupEditButtons() {
+        // Edit group button handlers
+        document.querySelectorAll('.edit-group-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                const groupName = this.getAttribute('data-group-name');
+                const groupDescription = this.getAttribute('data-group-description');
+                const groupColor = this.getAttribute('data-group-color');
+                const groupIcon = this.getAttribute('data-group-icon');
+                
+                // Set the form action URL
+                document.getElementById('editGroupForm').action = `/client-groups/${groupId}/edit/`;
+                
+                // Set values in edit form
+                document.getElementById('edit_name').value = groupName;
+                document.getElementById('edit_description').value = groupDescription || '';
+                document.getElementById('edit_color').value = groupColor;
+                document.getElementById('edit_icon_class').value = groupIcon;
+                
+                // Update color preview
+                document.getElementById('editColorPreview').style.backgroundColor = groupColor;
+                
+                // Update icon preview
+                document.getElementById('editIconPreview').querySelector('i').className = 'bi ' + groupIcon;
+                
+                // Fetch clients for this group via AJAX
+                fetchGroupClients(groupId);
+                
+                // Show the modal
+                const editModal = new coreui.Modal(document.getElementById('editGroupModal'));
+                editModal.show();
+            });
+        });
+    }
+    
+    function fetchGroupClients(groupId) {
+        // Fetch clients for this group
+        fetch(`/client-groups/${groupId}/clients-json/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const clientList = document.getElementById('editClientList');
+                clientList.innerHTML = '';
+                
+                if (data.all_clients && data.all_clients.length > 0) {
+                    data.all_clients.forEach(client => {
+                        const isChecked = data.group_clients.includes(client.id);
+                        
+                        const item = document.createElement('div');
+                        item.className = 'client-checkbox-item edit-client-item';
+                        
+                        item.innerHTML = `
+                            <div class="form-check">
+                                <input type="checkbox" name="clients" value="${client.id}" 
+                                       id="edit_client_${client.id}" class="form-check-input"
+                                       ${isChecked ? 'checked' : ''}>
+                                <label for="edit_client_${client.id}" class="form-check-label">${client.name}</label>
+                            </div>
+                        `;
+                        
+                        clientList.appendChild(item);
+                    });
+                } else {
+                    clientList.innerHTML = '<p class="text-center text-muted my-3">No clients available</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching clients:', error);
+                document.getElementById('editClientList').innerHTML = 
+                    '<p class="text-center text-danger my-3">Error loading clients. Please try again.</p>';
+            });
+    }
+    
+    function setupDeleteButtons() {
+        // Delete group button handlers
+        document.querySelectorAll('.delete-group-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const groupId = this.getAttribute('data-group-id');
+                const groupName = this.getAttribute('data-group-name');
+                
+                // Set the form action URL
+                document.getElementById('deleteGroupForm').action = `/client-groups/${groupId}/delete/`;
+                
+                // Set the group name in the confirmation message
+                document.getElementById('deleteGroupName').textContent = groupName;
+                
+                // Show the modal
+                const deleteModal = new coreui.Modal(document.getElementById('deleteGroupModal'));
+                deleteModal.show();
+            });
+        });
+    }
+    
+    function setupFormSubmissions() {
+        // Handle form submissions with AJAX
+        const forms = [
+            { id: 'createGroupForm', successMessage: 'Group created successfully!' },
+            { id: 'editGroupForm', successMessage: 'Group updated successfully!' },
+            { id: 'deleteGroupForm', successMessage: 'Group deleted successfully!' }
+        ];
+        
+        forms.forEach(formInfo => {
+            const form = document.getElementById(formInfo.id);
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitFormWithAjax(this, formInfo.successMessage);
+                });
+            }
+        });
+    }
+    
+    function submitFormWithAjax(form, successMessage) {
+        // Show loading state
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+        
+        // Prepare form data
+        const formData = new FormData(form);
+        
+        // Add AJAX header
+        const headers = {
+            'X-Requested-With': 'XMLHttpRequest'
+        };
+        
+        // Send AJAX request
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: headers
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            
+            // Try to parse JSON response
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Handle non-JSON response (like a redirect)
+                return { status: 'success' };
+            }
+        })
+        .then(data => {
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+            
+            if (data.status === 'success' || !data.status) {
+                // Close modals
+                document.querySelectorAll('.modal').forEach(modal => {
+                    const modalInstance = coreui.Modal.getInstance(modal);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                });
+                
+                // Show success message
+                showToast(successMessage, 'success');
+                
+                // Clean up URL by removing edit query parameter
+                const url = new URL(window.location.href);
+                url.searchParams.delete('edit');
+                
+                // Replace the current URL without the query parameter
+                window.history.replaceState({}, document.title, url.toString());
+                
+                // Reload the page to show updated data
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast(data.message || 'An error occurred', 'error');
+            }
+        })
+        .catch(error => {
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+            
+            console.error('Error:', error);
+            showToast('An error occurred. Please try again.', 'error');
+        });
+    }
+    
+    function setupClientSearch() {
+        // Client search functionality for create modal
+        const createSearchInput = document.getElementById('clientSearchCreate');
+        const createClientItems = document.querySelectorAll('.create-client-item');
+        
+        if (createSearchInput && createClientItems.length) {
+            createSearchInput.addEventListener('input', function() {
+                filterClients(this.value, createClientItems);
+            });
+        }
+        
+        // Client search functionality for edit modal
+        const editSearchInput = document.getElementById('clientSearchEdit');
+        
+        if (editSearchInput) {
+            editSearchInput.addEventListener('input', function() {
+                const editClientItems = document.querySelectorAll('.edit-client-item');
+                filterClients(this.value, editClientItems);
+            });
+        }
+    }
+    
+    function filterClients(searchTerm, clientItems) {
+        const term = searchTerm.toLowerCase().trim();
+        
+        clientItems.forEach(item => {
+            const clientName = item.querySelector('label').textContent.toLowerCase();
+            
+            if (clientName.includes(term)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    function showToast(message, type = 'info') {
+        // Create a bootstrap toast for notifications
+        // You can replace this with your preferred notification system
+        
+        // Simple alert for demonstration
+        // In a real app, you'd use a nicer notification system
+        if (type === 'error') {
+            alert('Error: ' + message);
+        } else {
+            alert(message);
+        }
+    }
+</script>
+{% endblock %}
