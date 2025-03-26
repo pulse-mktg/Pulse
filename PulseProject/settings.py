@@ -30,24 +30,24 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 ALLOWED_HOSTS = [
     'pulse-deploy-production.up.railway.app',
     'https://pulse-deploy-production.up.railway.app',
+    'pulse-production-3383.up.railway.app',  # Add this
     'localhost',
     '127.0.0.1',
     # Wildcard for ngrok domains
     '*.ngrok-free.app',
-    '2180-2607-fb91-7bb-c32c-e512-cfda-20e-dd1c.ngrok-free.app',
-    '0673-2601-282-227e-a550-d550-622a-bcab-8663.ngrok-free.app'
-
+    '*.railway.app',  # Add this for all Railway subdomains
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://pulse-deploy-production.up.railway.app',
+    'https://pulse-production-3383.up.railway.app',  # Add this
     'http://localhost:8000',
     'https://localhost:8000',
     'http://127.0.0.1:8000',
     'https://127.0.0.1:8000',
     # Wildcard for ngrok domains
     'https://*.ngrok-free.app',
-    'https://0673-2601-282-227e-a550-d550-622a-bcab-8663.ngrok-free.app'
+    'https://*.railway.app',  # Add this for all Railway subdomains
 ]
 
 MEDIA_URL = '/media/'
@@ -172,19 +172,21 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Google OAuth settings
+# Google Oauth
 GOOGLE_OAUTH_CLIENT_SECRET_PATH = os.path.join(BASE_DIR, os.getenv('GOOGLE_OAUTH_CLIENT_SECRET_PATH', 'secrets/client_secret.json'))
 
-# Load client secrets from the JSON file
+# Modify the try-except block to be more lenient
 try:
     with open(GOOGLE_OAUTH_CLIENT_SECRET_PATH, 'r') as f:
         client_secrets = json.load(f)
         GOOGLE_OAUTH_CLIENT_ID = client_secrets['web']['client_id']
         GOOGLE_OAUTH_CLIENT_SECRET = client_secrets['web']['client_secret']
-except FileNotFoundError:
-    GOOGLE_OAUTH_CLIENT_ID = None
-    GOOGLE_OAUTH_CLIENT_SECRET = None
-    print("Warning: Google OAuth client secret file not found")
+except (FileNotFoundError, KeyError):
+    # Fallback to environment variables if file not found
+    GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+    GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+    if not GOOGLE_OAUTH_CLIENT_ID or not GOOGLE_OAUTH_CLIENT_SECRET:
+        print("Warning: Google OAuth client secrets not configured")
 
 GOOGLE_OAUTH_SCOPES = [
     'https://www.googleapis.com/auth/adwords',
