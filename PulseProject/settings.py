@@ -37,7 +37,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 ALLOWED_HOSTS = [
     'pulse-deploy-production.up.railway.app',
     'https://pulse-deploy-production.up.railway.app',
-    'pulse-production-3383.up.railway.app',  # Add this
+    'pulse-production-3383.up.railway.app',
+    '0673-2601-282-227e-a550-d550-622a-bcab-8663.ngrok-free.app',  # Add this
     'localhost',
     '127.0.0.1',
     # Wildcard for ngrok domains
@@ -54,6 +55,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1:8000',
     # Wildcard for ngrok domains
     'https://*.ngrok-free.app',
+    'https://0673-2601-282-227e-a550-d550-622a-bcab-8663.ngrok-free.app',
     'https://*.railway.app',  # Add this for all Railway subdomains
 ]
 
