@@ -140,7 +140,7 @@
             <p class="mb-0">Campaign performance and budget monitoring for marketing agencies</p>
         </div>
         <div class="col-md-3 text-end">
-            <a href="#" class="btn btn-primary">
+            <a href="{% url 'agency_dashboard' %}" class="btn btn-primary">
                 <i class="bi bi-graph-up me-2"></i>Go to Dashboard
             </a>
         </div>
@@ -167,8 +167,8 @@
                     </div>
                     <h5>Connect Account</h5>
                     <p class="text-muted small mb-3">Link your Google Ads account to start monitoring</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">
-                        <a href="#" class="btn btn-sm btn-outline-primary"></a>
+                    <a href="{% url 'tenant_platforms' %}" class="btn btn-sm btn-outline-primary">
+                        <a href="{% url 'tenant_platforms' %}" class="btn btn-sm btn-outline-primary"></a>
                         <i class="bi bi-plus-circle me-1"></i> Add Connection
                     </a>
                 </div>
@@ -182,7 +182,7 @@
                     </div>
                     <h5>View Performance</h5>
                     <p class="text-muted small mb-3">Monitor campaigns, ad groups, and keywords</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'agency_dashboard' %}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-bar-chart me-1"></i> View Analytics
                     </a>
                 </div>
@@ -196,7 +196,7 @@
                     </div>
                     <h5>Budget Monitoring</h5>
                     <p class="text-muted small mb-3">Track spend and manage budgets across accounts</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'budget_dashboard' %}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-cash me-1"></i> Manage Budgets
                     </a>
                 </div>
@@ -218,7 +218,7 @@
                 </div>
                 <h5>Agency Dashboard</h5>
                 <p>Get a comprehensive overview of all your clients and campaigns in one place. Monitor performance metrics, track budget utilization, and identify opportunities.</p>
-                <a href="#" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'agency_dashboard' %}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-arrow-right"></i> Explore
                 </a>
             </div>
@@ -232,7 +232,7 @@
                 </div>
                 <h5>Client Management</h5>
                 <p>Organize clients into groups, manage platform connections, and track performance on a client-by-client basis. Keep everything organized and efficient.</p>
-                <a href="#" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'client_groups' %}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-arrow-right"></i> Explore
                 </a>
             </div>
@@ -246,7 +246,7 @@
                 </div>
                 <h5>Budget Control</h5>
                 <p>Create and monitor budgets across platforms, clients, and campaigns. Get alerts for overspend or underspend, and ensure your campaigns stay on track.</p>
-                <a href="#" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'budget_dashboard' %}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-arrow-right"></i> Explore
                 </a>
             </div>
@@ -328,7 +328,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-people me-2"></i> Recent Clients</h5>
-                <a href="#" class="btn btn-sm btn-outline-primary">
+                <a href="{% url 'create_client' %}" class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-plus-circle me-1"></i> Add Client
                 </a>
             </div>
@@ -359,7 +359,7 @@
                                         </div>
                                         {% endif %}
                                         <div>
-                                            <a href="#" class="fw-medium text-decoration-none">{{ client.name }}</a>
+                                            <a href="{% url 'client_dashboard' client.id %}" class="fw-medium text-decoration-none">{{ client.name }}</a>
                                         </div>
                                     </div>
                                 </td>
@@ -378,10 +378,10 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">
-                                    <a href="#" class="btn btn-sm btn-outline-primary me-1">
+                                    <a href="{% url 'client_dashboard' client.id %}" class="btn btn-sm btn-outline-primary me-1">
                                         <i class="bi bi-bar-chart"></i>
                                     </a>
-                                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{% url 'edit_client' client.id %}" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 </td>
@@ -392,7 +392,7 @@
                 </div>
                 {% if all_clients.count > 5 %}
                 <div class="text-center mt-3">
-                    <a href="#" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'agency_dashboard' %}" class="btn btn-sm btn-outline-primary">
                         View All Clients
                     </a>
                 </div>
@@ -565,7 +565,7 @@
                     </li>
                 </ul>
                 <div class="text-center mt-3">
-                    <a href="#" class="btn btn-sm btn-outline-primary">
+                    <a href="{% url 'budget_dashboard' %}" class="btn btn-sm btn-outline-primary">
                         View All Budgets
                     </a>
                 </div>
@@ -583,7 +583,7 @@
                 <p class="mb-0">Connect your Google Ads account and start monitoring your campaign performance and budgets.</p>
             </div>
             <div class="col-md-3 text-end">
-                <a href="#" class="btn btn-primary">
+                <a href="{% url 'tenant_platforms' %}" class="btn btn-primary">
                     <i class="bi bi-google me-2"></i>Connect Google Ads
                 </a>
             </div>

@@ -1857,7 +1857,6 @@ def client_dashboard(request, client_id):
     return render(request, 'client_dashboard.html', context)
 
 
-@login_required
 def mockup(request):
     """
     Enhanced home view with dashboard preview features for Google Ads API approval
