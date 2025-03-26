@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    /* Enhanced scroll padding */
+    html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 100px; /* Increase from the 90px in utilities.css */
+    }
+    
+    /* Ensure the available-platforms section has padding/margin for visibility */
+    #available-platforms {
+        scroll-margin-top: 100px;
+        padding-top: 15px;
+    }
+    
+    /* Add a visible separator before the section */
+    #available-platforms::before {
+        content: '';
+        display: block;
+        height: 1px;
+        background-color: #e9ecef;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row mb-2">
     <div class="col-md-12">
@@ -28,9 +53,10 @@
                 {% endif %}
                 <h1 class="page-title mb-0">Platform Connections</h1>
             </div>
-            <a href="#available-platforms" class="btn btn-primary js-scroll-to">
+            <!-- Replace the original button with this implementation -->
+            <a href="#available-platforms" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Connect Additional Platforms
-            </a>
+            </a>          
         </div>
     </div>
 </div>
@@ -237,32 +263,42 @@
 </div>
 {% endblock %}
 
+<!-- Add this script in the extra_js block -->
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
       console.log('Platform connections page loaded');
       
-      // Add smooth scrolling for anchor links with better offset
-      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-          e.preventDefault();
-          
-          const targetId = this.getAttribute('href');
-          const targetElement = document.querySelector(targetId);
-          
-          if (targetElement) {
-            // Calculate proper offset accounting for fixed header
-            const headerOffset = 80;
-            const elementPosition = targetElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-          }
-        });
-      });
+      // Direct DOM manipulation approach
+      const scrollButton = document.getElementById('scrollToAvailablePlatforms');
+      const targetSection = document.getElementById('available-platforms');
+      
+      if (scrollButton && targetSection) {
+          scrollButton.addEventListener('click', function() {
+              console.log('Button clicked, using hard scroll to available platforms');
+              
+              // Add a temporary high visibility marker before the section
+              const marker = document.createElement('div');
+              marker.id = 'scroll-marker';
+              marker.style.height = '200px';  // Create space to scroll to
+              marker.style.width = '100%';
+              marker.style.position = 'relative';
+              
+              // Insert the marker before the target section
+              targetSection.parentNode.insertBefore(marker, targetSection);
+              
+              // Focus on the marker which will scroll it into view
+              setTimeout(function() {
+                  marker.tabIndex = -1;
+                  marker.focus();
+                  
+                  // Remove the marker after scrolling
+                  setTimeout(function() {
+                      marker.remove();
+                  }, 1000);
+              }, 100);
+          });
+      }
     });
-  </script>
+</script>
 {% endblock %}
