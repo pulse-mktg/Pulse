@@ -73,6 +73,19 @@
     </div>
 </div>
 
+<!-- Add this after the tenant information in home.html, right before the Quick Stats Section -->
+{% if user.is_authenticated and selected_tenant %}
+    {% if user.date_joined|date:"Y-m-d" == now|date:"Y-m-d" %}
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <h4 class="alert-heading">Welcome to Pulse!</h4>
+        <p>Your agency account "<strong>{{ selected_tenant.name }}</strong>" has been created automatically. You can start by adding your first client.</p>
+        <hr>
+        <p class="mb-0">Need help getting started? Check out the available features in the sidebar.</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+{% endif %}
+
 <!-- Quick Stats Section -->
 <div class="row mb-4">
     <div class="col-md-4">
@@ -130,7 +143,12 @@
         <h5 class="mb-0">
             <i class="bi bi-person-badge me-2"></i> All Clients
         </h5>
-        <div class="ms-auto">
+        <div class="d-flex">
+            <!-- Archived Clients button -->
+            <button id="showArchivedClientsBtn" class="btn btn-sm btn-outline-secondary me-2">
+                <i class="bi bi-archive me-1"></i> Archived Clients
+            </button>
+            <!-- Add Client button -->
             <a href="{% url 'create_client' %}" class="btn btn-sm btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Add Client
             </a>
@@ -213,6 +231,11 @@
                 <i class="bi bi-plus-circle me-1"></i> Add Client
             </a>
         </div>
+        <div class="ms-2">
+            <button id="showArchivedClientsBtn" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-archive me-1"></i> Archived Clients
+            </button>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -232,6 +255,48 @@
 </div>
 {% endif %}
 
+<!-- Archived Clients Modal -->
+<div class="modal fade" id="archivedClientsModal" tabindex="-1" aria-labelledby="archivedClientsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="archivedClientsModalLabel">
+                    <i class="bi bi-archive me-2"></i> Archived Clients
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    This is a list of all clients that have been archived. You can restore clients to make them active again.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Client Name</th>
+                                <th>Created</th>
+                                <th>Archived</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Content will be loaded dynamically via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container for notifications -->
+<div class="toast-container position-fixed top-0 end-0 p-3"></div>
+{% endblock %}
+{% block extra_js %}
 <!-- Custom JavaScript -->
 <script src="{% static 'website/js/home.js' %}"></script>
+<script src="{% static 'website/js/archived-clients.js' %}"></script>
 {% endblock %}

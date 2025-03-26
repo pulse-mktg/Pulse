@@ -5,6 +5,10 @@ from . import dashboard_views  # Import the new dashboard views
 
 urlpatterns = [
     path('', views.home, name='home'),
+
+    # Path the dynamically loading clients when user logs in
+    path('api/clients/', views.clients_api, name='clients_api'),
+
     path('login/', views.login_user, name='login'),
     path('logout/', views.logout_user, name='logout'),
     path('register/', views.register_user, name='register'),
@@ -26,6 +30,8 @@ urlpatterns = [
     path('client/<int:client_id>/', views.client_detail, name='client_detail'),
     path('client/<int:client_id>/edit/', views.edit_client, name='edit_client'),
     path('client/<int:client_id>/archive/', views.archive_client, name='archive_client'),
+    path('api/archived-clients/', views.archived_clients_api, name='archived_clients_api'),
+    path('api/client/<int:client_id>/unarchive/', views.unarchive_client, name='unarchive_client'),
     path('client/<int:client_id>/dashboard/', dashboard_views.client_dashboard, name='client_dashboard'),  # Use new dashboard view
     
     # Tenant Platform Management URLs
@@ -43,6 +49,8 @@ urlpatterns = [
     path('client-platform-account/<int:account_id>/remove/', views.remove_client_platform_account, name='remove_client_platform_account'),
     path('client-platform-account/<int:account_id>/reactivate/', views.reactivate_client_platform_account, name='reactivate_client_platform_account'),
     
+
+
     # Google Ads Data URLs
     path('client/<int:client_id>/google-ads/<int:account_id>/', google_ads_views.google_ads_campaigns, name='google_ads_campaigns'),
     path('client/<int:client_id>/google-ads/<int:account_id>/campaign/<int:campaign_id>/', google_ads_views.google_ads_campaign_detail, name='google_ads_campaign_detail'),

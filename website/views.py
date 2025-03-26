@@ -29,32 +29,60 @@ def home(request):
     """
     Home view with enhanced tenant and client management
     """
-    # Prepare context
+    # Initialize context
     context = {
         'total_clients_count': 0,
         'active_clients_count': 0,
         'all_clients': []
     }
 
-    # Add clients if a tenant is selected (tenant is now provided by context processor)
+    # Get all tenants for this user
+    all_user_tenants = Tenant.objects.filter(users=request.user, is_active=True)
+
+    # If user has no tenants, just return the empty context
+    if not all_user_tenants.exists():
+        return render(request, 'home.html', context)
+
+    # Get selected tenant from session or use the first tenant
     selected_tenant_id = request.session.get('selected_tenant_id')
+    
+    # If no tenant is selected or the selected tenant isn't in the user's tenants,
+    # select the first tenant
+    selected_tenant = None
     if selected_tenant_id:
+        try:
+            selected_tenant = all_user_tenants.get(id=selected_tenant_id)
+        except Tenant.DoesNotExist:
+            selected_tenant = all_user_tenants.first()
+            request.session['selected_tenant_id'] = selected_tenant.id
+    else:
+        selected_tenant = all_user_tenants.first()
+        request.session['selected_tenant_id'] = selected_tenant.id
+
+    # Now that we definitely have a selected tenant, get its clients
+    if selected_tenant:
         # Prefetch groups to avoid N+1 queries when displaying client groups in the template
         active_clients = Client.objects.filter(
-            tenant_id=selected_tenant_id, 
+            tenant_id=selected_tenant.id, 
             is_active=True
         ).prefetch_related(
             Prefetch('groups', queryset=ClientGroup.objects.filter(is_active=True))
         )
         
         # Count total clients separately to avoid fetching unnecessary data
-        all_clients_count = Client.objects.filter(tenant_id=selected_tenant_id).count()
+        all_clients_count = Client.objects.filter(tenant_id=selected_tenant.id).count()
         
+        # Update context with client data
         context['all_clients'] = active_clients
         context['total_clients_count'] = all_clients_count
         context['active_clients_count'] = active_clients.count()
+        
+        # Add the selected tenant and all user tenants to context
+        context['selected_tenant'] = selected_tenant
+        context['all_user_tenants'] = all_user_tenants
 
     return render(request, 'home.html', context)
+
 
 @login_required
 def switch_tenant(request, tenant_id):
@@ -78,6 +106,14 @@ def login_user(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            
+            # After successful login, set up the default tenant
+            user_tenants = Tenant.objects.filter(users=user, is_active=True)
+            if user_tenants.exists():
+                # Set the first tenant as selected if none is already selected
+                if not request.session.get('selected_tenant_id'):
+                    request.session['selected_tenant_id'] = user_tenants.first().id
+            
             return redirect('home')
         else:
             messages.error(request, "Invalid username or password.")
@@ -90,16 +126,32 @@ def logout_user(request):
     return redirect('login')
 
 def register_user(request):
-    """Handle user registration"""
+    """Handle user registration with automatic tenant creation"""
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
-            form.save()
+            # Save the user
+            user = form.save()
             username = form.cleaned_data['username']
             password = form.cleaned_data['password1']
-            user = authenticate(username=username, password=password)
-            login(request, user)
-            messages.success(request, "You have registered successfully!")
+            
+            # Create a tenant for the new user using their first/last name or username
+            tenant_name = f"{form.cleaned_data['first_name']} {form.cleaned_data['last_name']}".strip()
+            if not tenant_name:
+                tenant_name = username
+                
+            # Create the tenant and associate it with the user
+            tenant = Tenant.objects.create(name=f"{tenant_name}'s Agency")
+            tenant.users.add(user)
+            
+            # Set the newly created tenant as the selected tenant in session
+            request.session['selected_tenant_id'] = tenant.id
+            
+            # Authenticate and log in the user
+            authenticated_user = authenticate(username=username, password=password)
+            login(request, authenticated_user)
+            
+            messages.success(request, "You have registered successfully! We've created your agency account.")
             return redirect('home')
     else:
         form = SignUpForm()
@@ -297,6 +349,74 @@ def archive_client(request, client_id):
     
     messages.success(request, f"Client '{client.name}' has been archived.")
     return redirect('home')
+
+@login_required
+def archived_clients_api(request):
+    """API endpoint to get archived clients for the selected tenant"""
+    # Get the selected tenant from session
+    selected_tenant_id = request.session.get('selected_tenant_id')
+    
+    if not selected_tenant_id:
+        return JsonResponse({'status': 'error', 'message': 'No tenant selected'})
+    
+    # Get the tenant and verify the user has access to it
+    try:
+        tenant = Tenant.objects.get(id=selected_tenant_id, users=request.user)
+    except Tenant.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Tenant not found'})
+    
+    # Get archived clients, ordered by most recently archived
+    archived_clients = Client.objects.filter(
+        tenant=tenant,
+        is_active=False,
+        archived_at__isnull=False
+    ).order_by('-archived_at')  # Using the archived_at field to sort
+    
+    # Format client data for JSON response
+    client_data = []
+    for client in archived_clients:
+        client_data.append({
+            'id': client.id,
+            'name': client.name,
+            'logo': client.logo.url if client.logo and client.logo.name else None,
+            'archived_at': client.archived_at.strftime('%b %d, %Y %H:%M') if client.archived_at else "",
+            'created_at': client.created_at.strftime('%b %d, %Y')
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'clients': client_data
+    })
+
+@login_required
+def unarchive_client(request, client_id):
+    """API endpoint to unarchive a client"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    # Get the client and verify the user has access through the tenant
+    client = get_object_or_404(Client, id=client_id, tenant__users=request.user)
+    
+    # Make sure the client is actually archived
+    if client.is_active:
+        return JsonResponse({'status': 'error', 'message': 'Client is already active'})
+    
+    # Unarchive the client
+    client.is_active = True
+    client.archived_at = None
+    client.save(update_fields=['is_active', 'archived_at'])
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': f"Client '{client.name}' has been restored.",
+        'client': {
+            'id': client.id,
+            'name': client.name,
+            'logo': client.logo.url if client.logo and client.logo.name else None,
+            'created_at': client.created_at.strftime('%b %d, %Y'),
+            'is_active': client.is_active
+        }
+    })
 
 @login_required
 def connect_platform(request, client_id):
@@ -1906,3 +2026,53 @@ def mockup(request):
         context['page_title'] = 'Home'
 
     return render(request, 'mockup.html', context)
+
+
+@login_required
+def clients_api(request):
+    """API endpoint to get clients for the selected tenant"""
+    # Get the selected tenant from session
+    selected_tenant_id = request.session.get('selected_tenant_id')
+    
+    if not selected_tenant_id:
+        return JsonResponse({'status': 'error', 'message': 'No tenant selected'})
+    
+    # Get the tenant and verify the user has access to it
+    try:
+        tenant = Tenant.objects.get(id=selected_tenant_id, users=request.user)
+    except Tenant.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Tenant not found'})
+    
+    # Get clients with prefetched groups
+    clients = Client.objects.filter(
+        tenant=tenant,
+        is_active=True
+    ).prefetch_related(
+        Prefetch('groups', queryset=ClientGroup.objects.filter(is_active=True))
+    )
+    
+    # Format client data for JSON response
+    client_data = []
+    for client in clients:
+        groups_data = []
+        for group in client.groups.all():
+            groups_data.append({
+                'id': group.id,
+                'name': group.name,
+                'color': group.color,
+                'icon_class': group.icon_class
+            })
+        
+        client_data.append({
+            'id': client.id,
+            'name': client.name,
+            'logo': client.logo.url if client.logo and client.logo.name else None,
+            'created_at': client.created_at.strftime('%b %d, %Y'),
+            'is_active': client.is_active,
+            'groups': groups_data
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'clients': client_data
+    })
