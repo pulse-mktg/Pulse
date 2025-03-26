@@ -9,6 +9,9 @@ urlpatterns = [
     path('logout/', views.logout_user, name='logout'),
     path('register/', views.register_user, name='register'),
     
+    #Mockup
+    path('mockup/', views.mockup, name='home_page'),
+
     # Dashboard URLs
     path('agency-dashboard/', dashboard_views.agency_dashboard, name='agency_dashboard'),
     

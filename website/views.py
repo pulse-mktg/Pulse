@@ -1855,3 +1855,55 @@ def client_dashboard(request, client_id):
         'page_title': f'{client.name} Dashboard'
     }
     return render(request, 'client_dashboard.html', context)
+
+
+@login_required
+def mockup(request):
+    """
+    Enhanced home view with dashboard preview features for Google Ads API approval
+    """
+    # Prepare context
+    context = {
+        'total_clients_count': 0,
+        'active_clients_count': 0,
+        'all_clients': []
+    }
+
+    # Add clients if a tenant is selected (tenant is now provided by context processor)
+    selected_tenant_id = request.session.get('selected_tenant_id')
+    if selected_tenant_id:
+        # Prefetch groups to avoid N+1 queries when displaying client groups in the template
+        active_clients = Client.objects.filter(
+            tenant_id=selected_tenant_id, 
+            is_active=True
+        ).prefetch_related(
+            Prefetch('groups', queryset=ClientGroup.objects.filter(is_active=True))
+        )
+        
+        # Count total clients separately to avoid fetching unnecessary data
+        all_clients_count = Client.objects.filter(tenant_id=selected_tenant_id).count()
+        
+        # Get platform connections for this tenant
+        platform_connections = PlatformConnection.objects.filter(
+            tenant_id=selected_tenant_id,
+            is_active=True
+        ).select_related('platform_type')
+        
+        # Count connections by platform type
+        platform_counts = {}
+        for connection in platform_connections:
+            platform_type = connection.platform_type.name
+            if platform_type in platform_counts:
+                platform_counts[platform_type] += 1
+            else:
+                platform_counts[platform_type] = 1
+
+        # Add to context
+        context['all_clients'] = active_clients
+        context['total_clients_count'] = all_clients_count
+        context['active_clients_count'] = active_clients.count()
+        context['platform_connections'] = platform_connections
+        context['platform_counts'] = platform_counts
+        context['page_title'] = 'Home'
+
+    return render(request, 'mockup.html', context)
