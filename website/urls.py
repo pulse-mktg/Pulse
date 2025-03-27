@@ -34,6 +34,11 @@ urlpatterns = [
     path('api/client/<int:client_id>/unarchive/', views.unarchive_client, name='unarchive_client'),
     path('client/<int:client_id>/dashboard/', dashboard_views.client_dashboard, name='client_dashboard'),  # Use new dashboard view
     
+    # Competitor Management URLs
+    path('client/<int:client_id>/competitor/add/', views.add_competitor, name='add_competitor'),
+    path('client/<int:client_id>/competitor/<int:competitor_id>/edit/', views.edit_competitor, name='edit_competitor'),
+    path('client/<int:client_id>/competitor/<int:competitor_id>/delete/', views.delete_competitor, name='delete_competitor'),
+
     # Tenant Platform Management URLs
     path('tenant/platforms/', views.tenant_platforms, name='tenant_platforms'),
     path('tenant/platform/<int:platform_id>/connect/', views.connect_platform_to_tenant, name='connect_platform_to_tenant'),

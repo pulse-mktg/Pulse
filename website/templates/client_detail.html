@@ -82,6 +82,9 @@
             </div>
             <div class="card-body">
                 <dl class="row">
+                    <dt class="col-sm-5">Industry:</dt>
+                    <dd class="col-sm-7">{{ client.get_industry_display|default:"Not specified" }}</dd>
+                    
                     <dt class="col-sm-5">Company Size:</dt>
                     <dd class="col-sm-7">{{ client.get_company_size_display|default:"Not specified" }}</dd>
                     
@@ -237,6 +240,91 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-flag me-2"></i> Competitors
+        </h5>
+        <button class="btn btn-sm btn-primary" data-coreui-toggle="modal" data-coreui-target="#addCompetitorModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Competitor
+        </button>
+    </div>
+    <div class="card-body">
+        {% if competitors %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Website</th>
+                        <th>Threat Level</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for competitor in competitors %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {{ competitor.name }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if competitor.website %}
+                            <a href="{{ competitor.website }}" target="_blank" rel="noopener noreferrer">
+                                {{ competitor.website|truncatechars:30 }}
+                                <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted">No website</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if competitor.strength == 'low' %}
+                            <span class="badge bg-success">Low Threat</span>
+                            {% elif competitor.strength == 'medium' %}
+                            <span class="badge bg-warning">Medium Threat</span>
+                            {% elif competitor.strength == 'high' %}
+                            <span class="badge bg-danger">High Threat</span>
+                            {% elif competitor.strength == 'direct' %}
+                            <span class="badge bg-danger">Direct Competitor</span>
+                            {% elif competitor.strength == 'indirect' %}
+                            <span class="badge bg-info">Indirect Competitor</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        data-coreui-toggle="modal"
+                                        data-coreui-target="#viewCompetitorModal{{ competitor.id }}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        data-coreui-toggle="modal"
+                                        data-coreui-target="#editCompetitorModal{{ competitor.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-competitor-btn"
+                                        data-competitor-id="{{ competitor.id }}"
+                                        data-competitor-name="{{ competitor.name }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No competitors have been added yet. Click the "Add Competitor" button to add one.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Performance Metrics Section (Placeholder) -->
 <div class="row">
     <div class="col-md-12">
@@ -252,4 +340,236 @@
         </div>
     </div>
 </div>
+
+
+<!-- View Competitor Modals -->
+{% for competitor in competitors %}
+<div class="modal fade" id="viewCompetitorModal{{ competitor.id }}" tabindex="-1" aria-labelledby="viewCompetitorModalLabel{{ competitor.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewCompetitorModalLabel{{ competitor.id }}">
+                    {{ competitor.name }}
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-muted">Website</h6>
+                    {% if competitor.website %}
+                    <p><a href="{{ competitor.website }}" target="_blank" rel="noopener noreferrer">{{ competitor.website }}</a></p>
+                    {% else %}
+                    <p class="text-muted">No website</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Description</h6>
+                    <p>{{ competitor.description|default:"No description provided" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Threat Level</h6>
+                    <p>
+                        {% if competitor.strength == 'low' %}
+                        <span class="badge bg-success">Low Threat</span>
+                        {% elif competitor.strength == 'medium' %}
+                        <span class="badge bg-warning">Medium Threat</span>
+                        {% elif competitor.strength == 'high' %}
+                        <span class="badge bg-danger">High Threat</span>
+                        {% elif competitor.strength == 'direct' %}
+                        <span class="badge bg-danger">Direct Competitor</span>
+                        {% elif competitor.strength == 'indirect' %}
+                        <span class="badge bg-info">Indirect Competitor</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Key Advantages</h6>
+                    <p>{{ competitor.advantages|default:"No advantages provided"|linebreaks }}</p>
+                </div>
+                
+                <div class="mb-0">
+                    <h6 class="text-muted">Added</h6>
+                    <p>{{ competitor.created_at|date:"M d, Y" }}</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-coreui-dismiss="modal" data-coreui-toggle="modal" data-coreui-target="#editCompetitorModal{{ competitor.id }}">Edit</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Add Competitor Modal -->
+<div class="modal fade" id="addCompetitorModal" tabindex="-1" aria-labelledby="addCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCompetitorModalLabel">
+                    <i class="bi bi-plus-circle me-1"></i> Add Competitor
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'add_competitor' client.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name</label>
+                        <input type="text" name="name" id="id_name" class="form-control" required placeholder="Competitor Name">
+                    </div>
+                    
+                    <!-- Website -->
+                    <div class="mb-3">
+                        <label for="id_website" class="form-label">Website</label>
+                        <input type="url" name="website" id="id_website" class="form-control" placeholder="https://competitor.com">
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        <textarea name="description" id="id_description" class="form-control" rows="2" placeholder="Brief description of the competitor"></textarea>
+                    </div>
+                    
+                    <!-- Threat Level -->
+                    <div class="mb-3">
+                        <label for="id_strength" class="form-label">Threat Level</label>
+                        <select name="strength" id="id_strength" class="form-select">
+                            <option value="low">Low Threat</option>
+                            <option value="medium" selected>Medium Threat</option>
+                            <option value="high">High Threat</option>
+                            <option value="direct">Direct Competitor</option>
+                            <option value="indirect">Indirect Competitor</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advantages -->
+                    <div class="mb-0">
+                        <label for="id_advantages" class="form-label">Key Advantages</label>
+                        <textarea name="advantages" id="id_advantages" class="form-control" rows="3" placeholder="What makes this competitor strong or unique?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Competitor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Edit Competitor Modals -->
+{% for competitor in competitors %}
+<div class="modal fade" id="editCompetitorModal{{ competitor.id }}" tabindex="-1" aria-labelledby="editCompetitorModalLabel{{ competitor.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCompetitorModalLabel{{ competitor.id }}">
+                    <i class="bi bi-pencil me-1"></i> Edit: {{ competitor.name }}
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'edit_competitor' client.id competitor.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label for="id_name_{{ competitor.id }}" class="form-label">Name</label>
+                        <input type="text" name="name" id="id_name_{{ competitor.id }}" class="form-control" required value="{{ competitor.name }}">
+                    </div>
+                    
+                    <!-- Website -->
+                    <div class="mb-3">
+                        <label for="id_website_{{ competitor.id }}" class="form-label">Website</label>
+                        <input type="url" name="website" id="id_website_{{ competitor.id }}" class="form-control" value="{{ competitor.website|default:'' }}">
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="id_description_{{ competitor.id }}" class="form-label">Description</label>
+                        <textarea name="description" id="id_description_{{ competitor.id }}" class="form-control" rows="2">{{ competitor.description }}</textarea>
+                    </div>
+                    
+                    <!-- Threat Level -->
+                    <div class="mb-3">
+                        <label for="id_strength_{{ competitor.id }}" class="form-label">Threat Level</label>
+                        <select name="strength" id="id_strength_{{ competitor.id }}" class="form-select">
+                            <option value="low" {% if competitor.strength == 'low' %}selected{% endif %}>Low Threat</option>
+                            <option value="medium" {% if competitor.strength == 'medium' %}selected{% endif %}>Medium Threat</option>
+                            <option value="high" {% if competitor.strength == 'high' %}selected{% endif %}>High Threat</option>
+                            <option value="direct" {% if competitor.strength == 'direct' %}selected{% endif %}>Direct Competitor</option>
+                            <option value="indirect" {% if competitor.strength == 'indirect' %}selected{% endif %}>Indirect Competitor</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advantages -->
+                    <div class="mb-0">
+                        <label for="id_advantages_{{ competitor.id }}" class="form-label">Key Advantages</label>
+                        <textarea name="advantages" id="id_advantages_{{ competitor.id }}" class="form-control" rows="3">{{ competitor.advantages }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Delete Competitor Confirmation Modal -->
+<div class="modal fade" id="deleteCompetitorModal" tabindex="-1" aria-labelledby="deleteCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCompetitorModalLabel">
+                    <i class="bi bi-exclamation-triangle me-1 text-danger"></i> Delete Competitor
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the competitor "<span id="deleteCompetitorName"></span>"?</p>
+                <p class="text-danger mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                <form id="deleteCompetitorForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Competitor Management -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete competitor buttons
+    const deleteButtons = document.querySelectorAll('.delete-competitor-btn');
+    const deleteModal = new coreui.Modal(document.getElementById('deleteCompetitorModal'));
+    const deleteForm = document.getElementById('deleteCompetitorForm');
+    const deleteNameSpan = document.getElementById('deleteCompetitorName');
+    
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const competitorId = this.getAttribute('data-competitor-id');
+            const competitorName = this.getAttribute('data-competitor-name');
+            
+            // Set the competitor name in the modal
+            deleteNameSpan.textContent = competitorName;
+            
+            // Set the form action
+            deleteForm.action = `/client/{{ client.id }}/competitor/${competitorId}/delete/`;
+            
+            // Show the modal
+            deleteModal.show();
+        });
+    });
+});
+</script>
 {% endblock %}

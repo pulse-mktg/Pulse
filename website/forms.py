@@ -1,7 +1,7 @@
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django import forms
-from .models import Tenant, Client, PlatformSettings, PlatformConnection, ClientPlatformAccount, ClientGroup, BudgetAllocation, BudgetAlert, Budget, GoogleAdsCampaign
+from .models import Tenant, Client, PlatformSettings, PlatformConnection, ClientPlatformAccount, ClientGroup, BudgetAllocation, BudgetAlert, Budget, GoogleAdsCampaign, Competitor
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(label="", widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Email Address'}))
@@ -69,7 +69,42 @@ class TenantForm(forms.ModelForm):
         
         return instance
 
+# Add to your forms.py file
+
 class ClientForm(forms.ModelForm):
+    class Meta:
+        model = Client
+        fields = [
+            'name', 'description', 'logo', 
+            'industry', 'company_size', 'revenue_range', 'geographic_focus',
+            'business_model_types', 'marketing_maturity', 'website'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client Name'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Description', 'rows': 3}),
+            'industry': forms.Select(attrs={'class': 'form-select'}),
+            'company_size': forms.Select(attrs={'class': 'form-select'}),
+            'revenue_range': forms.Select(attrs={'class': 'form-select'}),
+            'geographic_focus': forms.Select(attrs={'class': 'form-select'}),
+            'marketing_maturity': forms.Select(attrs={'class': 'form-select'}),
+            'website': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'})
+        }
+
+
+# Add a new form for competitors
+class CompetitorForm(forms.ModelForm):
+    class Meta:
+        model = Competitor
+        fields = ['name', 'website', 'description', 'strength', 'advantages']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Competitor Name'}),
+            'website': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://competitor.com'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Brief description of the competitor', 'rows': 2}),
+            'strength': forms.Select(attrs={'class': 'form-select'}),
+            'advantages': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Key advantages or strengths of this competitor', 'rows': 3}),
+        }
+
+
     class Meta:
         model = Client
         fields = [

@@ -43,6 +43,33 @@ class Client(models.Model):
     is_active = models.BooleanField(default=True)
     archived_at = models.DateTimeField(null=True, blank=True)
     
+    # Industry choices
+    INDUSTRY_CHOICES = [
+        ('retail', 'Retail'),
+        ('healthcare', 'Healthcare'),
+        ('technology', 'Technology'),
+        ('finance', 'Finance & Banking'),
+        ('education', 'Education'),
+        ('manufacturing', 'Manufacturing'),
+        ('food_beverage', 'Food & Beverage'),
+        ('real_estate', 'Real Estate'),
+        ('hospitality', 'Hospitality & Tourism'),
+        ('entertainment', 'Entertainment & Media'),
+        ('automotive', 'Automotive'),
+        ('ecommerce', 'E-Commerce'),
+        ('agriculture', 'Agriculture'),
+        ('construction', 'Construction'),
+        ('professional_services', 'Professional Services'),
+        ('nonprofit', 'Non-profit & NGO'),
+        ('energy', 'Energy & Utilities'),
+        ('logistics', 'Logistics & Transportation'),
+        ('telecom', 'Telecommunications'),
+        ('government', 'Government'),
+        ('other', 'Other')
+    ]
+    industry = models.CharField(max_length=30, choices=INDUSTRY_CHOICES, blank=True, null=True)
+    
+    # Existing fields continue below...
     COMPANY_SIZE_CHOICES = [
         ('startup', 'Startup (1-10 employees)'),
         ('small', 'Small Business (11-50 employees)'),
@@ -106,6 +133,9 @@ class Client(models.Model):
         ('expert', 'Expert (sophisticated testing, integration, attribution)'),
     ]
     marketing_maturity = models.CharField(max_length=20, choices=MARKETING_MATURITY_CHOICES, blank=True, null=True)
+    
+    # Website field
+    website = models.URLField(max_length=255, blank=True, null=True)
 
     class Meta:
         indexes = [
@@ -116,10 +146,52 @@ class Client(models.Model):
             models.Index(fields=['revenue_range']),        # For filtering by revenue
             models.Index(fields=['geographic_focus']),     # For filtering by geography
             models.Index(fields=['marketing_maturity']),   # For filtering by maturity
+            models.Index(fields=['industry']),             # For filtering by industry
+            models.Index(fields=['website', 'tenant', 'is_active']), # For lookup by website
         ]
 
     def __str__(self):
         return f"{self.name} ({self.tenant.name})"
+
+
+# New model for tracking client competitors
+class Competitor(models.Model):
+    """
+    Represents a competitor to a client
+    """
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='competitors')
+    name = models.CharField(max_length=100)
+    website = models.URLField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True)
+    
+    # Competitor strength
+    STRENGTH_CHOICES = [
+        ('low', 'Low threat'),
+        ('medium', 'Medium threat'),
+        ('high', 'High threat'),
+        ('direct', 'Direct competitor'),
+        ('indirect', 'Indirect competitor'),
+    ]
+    strength = models.CharField(max_length=20, choices=STRENGTH_CHOICES, default='medium')
+    
+    # Key advantages (what makes the competitor strong)
+    advantages = models.TextField(blank=True, help_text="Key advantages of this competitor")
+    
+    # Track when competitor was added and updated
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = [['client', 'name']]
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['client', 'is_active']),
+            models.Index(fields=['strength']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} (competitor of {self.client.name})"
     
 class PlatformType(models.Model):
     """

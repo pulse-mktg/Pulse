@@ -64,6 +64,18 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
+                            <label for="id_industry" class="form-label">Industry</label>
+                            <select name="industry" id="id_industry" class="form-select">
+                                <option value="">-- Select industry --</option>
+                                {% for value, text in form.fields.industry.choices %}
+                                    <option value="{{ value }}" {% if form.instance.industry == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Select the client's primary industry</small>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label for="id_company_size" class="form-label">Company Size</label>
                             <select name="company_size" id="id_company_size" class="form-select">
                                 <option value="">-- Select company size --</option>

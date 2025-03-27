@@ -4,8 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import Tenant, Client, PlatformType, PlatformConnection, ClientPlatformAccount, Budget, BudgetAlert, BudgetAllocation, SpendSnapshot, GoogleAdsDailyMetrics, GoogleAdsCampaign
-from .forms import SignUpForm, TenantForm, ClientForm
+from .models import Tenant, Client, PlatformType, PlatformConnection, ClientPlatformAccount, Budget, BudgetAlert, BudgetAllocation, SpendSnapshot, GoogleAdsDailyMetrics, GoogleAdsCampaign, Competitor
+from .forms import SignUpForm, TenantForm, ClientForm, CompetitorForm
 from django.utils import timezone
 from django.conf import settings
 from django.urls import reverse
@@ -224,6 +224,7 @@ def create_client(request):
 def client_detail(request, client_id):
     """
     View for viewing client details with optimized database queries
+    Now includes competitor information
     """
     # Use select_related to fetch tenant in the same query
     client = get_object_or_404(
@@ -272,6 +273,12 @@ def client_detail(request, client_id):
         is_active=True
     ).select_related('client', 'client_group').order_by('end_date')[:5]  # Limit to 5 most recent
     
+    # Get client competitors
+    competitors = Competitor.objects.filter(
+        client=client,
+        is_active=True
+    ).order_by('name')
+    
     # Check for custom and auto-generated groups
     has_custom_groups = active_client_groups.filter(is_auto_generated=False).exists()
     has_auto_groups = active_client_groups.filter(is_auto_generated=True).exists()
@@ -298,6 +305,7 @@ def client_detail(request, client_id):
         'platform_accounts': active_platform_accounts,
         'client_groups': active_client_groups,
         'client_budgets': client_budgets,
+        'competitors': competitors,  # Add competitors to context
         'page_title': client.name
     }
     return render(request, 'client_detail.html', context)
@@ -882,6 +890,103 @@ def manage_tenant_platform_connection(request, connection_id):
         'page_title': f'Manage {connection.platform_type.name} Connection'
     }
     return render(request, 'manage_tenant_platform.html', context)
+
+@login_required
+def add_competitor(request, client_id):
+    """
+    View for adding a competitor to a client
+    """
+    # Get the client and verify the user has access through the tenant
+    client = get_object_or_404(
+        Client, 
+        id=client_id, 
+        tenant__users=request.user
+    )
+    
+    if request.method == 'POST':
+        # Create a new Competitor object but don't save it yet
+        competitor = Competitor(client=client)
+        
+        # Set fields from POST data
+        competitor.name = request.POST.get('name', '')
+        competitor.website = request.POST.get('website', '')
+        competitor.description = request.POST.get('description', '')
+        competitor.strength = request.POST.get('strength', 'medium')
+        competitor.advantages = request.POST.get('advantages', '')
+        
+        # Validate data
+        if not competitor.name:
+            messages.error(request, "Competitor name is required.")
+        else:
+            # Save the competitor
+            try:
+                competitor.save()
+                messages.success(request, f"Competitor '{competitor.name}' added successfully!")
+            except Exception as e:
+                messages.error(request, f"Error saving competitor: {str(e)}")
+    
+    return redirect('client_detail', client_id=client.id)
+
+@login_required
+def edit_competitor(request, client_id, competitor_id):
+    """
+    View for editing a competitor
+    """
+    # Get the client and verify the user has access through the tenant
+    client = get_object_or_404(
+        Client, 
+        id=client_id, 
+        tenant__users=request.user
+    )
+    
+    # Get the competitor and verify it belongs to the client
+    competitor = get_object_or_404(
+        Competitor, 
+        id=competitor_id, 
+        client=client
+    )
+    
+    if request.method == 'POST':
+        form = CompetitorForm(request.POST, instance=competitor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Competitor '{competitor.name}' updated successfully!")
+        else:
+            messages.error(request, "There was an error updating the competitor. Please check the form and try again.")
+    
+    return redirect('client_detail', client_id=client.id)
+
+
+@login_required
+def delete_competitor(request, client_id, competitor_id):
+    """
+    View for deleting a competitor
+    """
+    # Get the client and verify the user has access through the tenant
+    client = get_object_or_404(
+        Client, 
+        id=client_id, 
+        tenant__users=request.user
+    )
+    
+    # Get the competitor and verify it belongs to the client
+    competitor = get_object_or_404(
+        Competitor, 
+        id=competitor_id, 
+        client=client
+    )
+    
+    if request.method == 'POST':
+        competitor_name = competitor.name
+        
+        # Mark as inactive instead of actual deletion
+        competitor.is_active = False
+        competitor.save()
+        
+        messages.success(request, f"Competitor '{competitor_name}' deleted successfully!")
+    
+    return redirect('client_detail', client_id=client.id)
+
 
 @login_required
 def add_client_google_ads(request, client_id):
