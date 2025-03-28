@@ -13,3 +13,8 @@ def abs_filter(value):
     except (ValueError, TypeError):
         # Return original if conversion fails
         return value
+    
+@register.filter
+def filter_by_platform(accounts, platform_slug):
+    return [account for account in accounts if account.platform_connection.platform_type.slug == platform_slug]
+

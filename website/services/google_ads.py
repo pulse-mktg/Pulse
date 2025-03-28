@@ -295,15 +295,6 @@ class GoogleAdsService(PlatformService):
             return {'email': 'unknown@example.com', 'name': 'Unknown User'}
             
     def get_adwords_customer_ids(self, connection):
-        """
-        Get available Google Ads customer IDs including manager accounts using only REST API.
-        
-        Args:
-            connection: The PlatformConnection object
-            
-        Returns:
-            list: List of customer IDs or empty list if unavailable
-        """
         try:
             # Check if token needs refresh
             if connection.is_token_expired():
@@ -311,185 +302,169 @@ class GoogleAdsService(PlatformService):
                 if not success:
                     return [{"id": "ERROR", "name": "OAuth token refresh failed"}]
             
-            # Create headers for API requests
-            headers = {
-                'Authorization': f'Bearer {connection.access_token}',
-                'developer-token': settings.GOOGLE_ADS_DEVELOPER_TOKEN
-            }
+            # Create credentials
+            credentials = google.oauth2.credentials.Credentials(
+                token=connection.access_token,
+                refresh_token=connection.refresh_token,
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=settings.GOOGLE_OAUTH_CLIENT_ID,
+                client_secret=settings.GOOGLE_OAUTH_CLIENT_SECRET
+            )
             
-            # Step 1: Get all accessible customer IDs (this gets what you already have)
-            list_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
-            response = requests.get(list_url, headers=headers)
             all_accounts = []
             
-            if response.status_code != 200:
-                logger.warning(f"REST API failed: {response.status_code} - {response.text}")
-                test_account_id = "593-862-9374"
-                return [{"id": test_account_id, "name": f"Test Account {test_account_id} (Use this account)"}]
-            
-            data = response.json()
-            if 'resourceNames' not in data or not data['resourceNames']:
-                logger.warning("No accounts found with REST API")
-                test_account_id = "593-862-9374"
-                return [{"id": test_account_id, "name": f"Test Account {test_account_id} (Use this account)"}]
-            
-            # First collect all customer IDs we have direct access to
-            direct_access_ids = []
-            for resource_name in data['resourceNames']:
-                customer_id = resource_name.split('/')[-1]
-                direct_access_ids.append(customer_id)
-                
-                if len(customer_id) >= 10:
-                    formatted_id = f"{customer_id[:3]}-{customer_id[3:6]}-{customer_id[6:]}"
-                else:
-                    formatted_id = customer_id
-                
-                # Add to our list
-                all_accounts.append({"id": formatted_id, "name": f"Account {formatted_id}"})
-                
-            # Step 2: Direct REST approach to get manager account hierarchy
-            # This is what should show accounts from the left dropdown
-            logger.info(f"Looking for manager account relationships for {len(direct_access_ids)} accounts")
-            
-            # Try the first approach: CustomerClient service
-            for customer_id in direct_access_ids:
-                # This endpoint specifically lists all accounts in the hierarchy for a customer
-                hierarchy_url = f'https://googleads.googleapis.com/v19/customers/{customer_id}/googleAds:searchStream'
-                
-                # GAQL query to get hierarchy information
-                query = """
-                SELECT
-                customer_client.id,
-                customer_client.descriptive_name,
-                customer_client.level,
-                customer_client.manager,
-                customer_client.currency_code,
-                customer_client.time_zone,
-                customer_client.resource_name
-                FROM customer_client
-                """
-                
-                # Use a POST request with the query
-                try:
-                    logger.info(f"Querying hierarchy for customer ID: {customer_id}")
-                    response = requests.post(
-                        hierarchy_url, 
-                        headers=headers,
-                        json={'query': query}
-                    )
-                    
-                    if response.status_code == 200:
-                        # Process the response - this might be a bit different in the REST API
-                        response_data = response.json()
-                        
-                        # Check for results
-                        if 'results' in response_data:
-                            logger.info(f"Found {len(response_data['results'])} accounts in hierarchy for {customer_id}")
-                            
-                            for result in response_data['results']:
-                                client_data = result.get('customerClient', {})
-                                
-                                client_id = client_data.get('id', '')
-                                if not client_id:
-                                    continue
-                                    
-                                # Format the client ID
-                                if len(client_id) >= 10:
-                                    formatted_client_id = f"{client_id[:3]}-{client_id[3:6]}-{client_id[6:]}"
-                                else:
-                                    formatted_client_id = client_id
-                                    
-                                # Get the descriptive name
-                                client_name = client_data.get('descriptiveName', f"Account {formatted_client_id}")
-                                
-                                # Check if this is a manager account
-                                is_manager = client_data.get('manager', False)
-                                display_name = f"Manager: {client_name}" if is_manager else client_name
-                                
-                                # Add to the list if not already there
-                                if not any(account['id'] == formatted_client_id for account in all_accounts):
-                                    all_accounts.append({"id": formatted_client_id, "name": display_name})
-                    else:
-                        logger.warning(f"Hierarchy query failed for {customer_id}: {response.status_code} - {response.text}")
-                        
-                        # If we get a specific error about invalid queries, try a different approach
-                        if response.status_code in [400, 501]:
-                            logger.info(f"Trying alternate approach for {customer_id}")
-                            
-                            # Try a different endpoint: get customer manager links
-                            manager_links_url = f'https://googleads.googleapis.com/v19/customers/{customer_id}/customerManagerLinks'
-                            manager_links_response = requests.get(manager_links_url, headers=headers)
-                            
-                            if manager_links_response.status_code == 200:
-                                manager_links_data = manager_links_response.json()
-                                
-                                if 'results' in manager_links_data:
-                                    logger.info(f"Found {len(manager_links_data['results'])} manager links for {customer_id}")
-                                    
-                                    for link in manager_links_data['results']:
-                                        manager_customer = link.get('managerCustomer', '')
-                                        if manager_customer:
-                                            manager_id = manager_customer.split('/')[-1]
-                                            formatted_manager_id = f"{manager_id[:3]}-{manager_id[3:6]}-{manager_id[6:]}" if len(manager_id) >= 10 else manager_id
-                                            
-                                            # Add this manager if not already in the list
-                                            if not any(account['id'] == formatted_manager_id for account in all_accounts):
-                                                all_accounts.append({"id": formatted_manager_id, "name": f"Manager Account {formatted_manager_id}"})
-                
-                except Exception as e:
-                    logger.warning(f"Error getting hierarchy for {customer_id}: {str(e)}")
-                    
-            # Step 3: Last attempt - try to use the MCC accounts REST endpoint
             try:
-                # This is a special endpoint just for MCC accounts
-                mcc_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers?filter=manager=true'
-                mcc_response = requests.get(mcc_url, headers=headers)
+                logger.info("Using Google Ads API v19...")
                 
-                if mcc_response.status_code == 200:
-                    mcc_data = mcc_response.json()
+                # Create Google Ads client with v19 version
+                client = GoogleAdsClient(
+                    credentials=credentials,
+                    developer_token=settings.GOOGLE_ADS_DEVELOPER_TOKEN,
+                    use_proto_plus=True,
+                    version="v19"
+                )
+                
+                # Get the CustomerService
+                customer_service = client.get_service("CustomerService")
+                
+                # Create a proper request object for v19
+                request = client.get_type("ListAccessibleCustomersRequest")
+                
+                # Make the API call
+                accessible_customers = customer_service.list_accessible_customers(request=request)
+                
+                # Process resource names
+                for resource_name in accessible_customers.resource_names:
+                    customer_id = resource_name.split('/')[-1]
+                    # Format with hyphens for readability
+                    if len(customer_id) >= 10:
+                        formatted_id = f"{customer_id[:3]}-{customer_id[3:6]}-{customer_id[6:]}"
+                    else:
+                        formatted_id = customer_id
+                    all_accounts.append({"id": formatted_id, "name": f"Account {formatted_id}"})
+                
+                if all_accounts:
+                    logger.info(f"Successfully found {len(all_accounts)} accounts via API v19")
                     
-                    if 'resourceNames' in mcc_data:
-                        logger.info(f"Found {len(mcc_data['resourceNames'])} MCC accounts")
-                        
-                        for resource_name in mcc_data['resourceNames']:
-                            mcc_id = resource_name.split('/')[-1]
-                            formatted_mcc_id = f"{mcc_id[:3]}-{mcc_id[3:6]}-{mcc_id[6:]}" if len(mcc_id) >= 10 else mcc_id
-                            
-                            # Check if this MCC is already in our list and update it
-                            mcc_exists = False
-                            for i, account in enumerate(all_accounts):
-                                if account['id'] == formatted_mcc_id:
-                                    all_accounts[i]['name'] = f"Manager: {account['name']}"
-                                    mcc_exists = True
-                                    break
-                            
-                            # Add if not already in the list
-                            if not mcc_exists:
-                                all_accounts.append({"id": formatted_mcc_id, "name": f"Manager Account {formatted_mcc_id}"})
-            except Exception as e:
-                logger.warning(f"Error getting MCC accounts: {str(e)}")
+                    # Try to enhance account information with descriptive names
+                    self._enhance_account_information(client, all_accounts)
+                    return all_accounts
+                else:
+                    logger.warning("No accounts found with API v19")
+            
+            except Exception as api_error:
+                logger.warning(f"API v19 method failed: {str(api_error)}")
+            
+            # Fallback to REST API method if client library approach fails
+            try:
+                logger.info("Falling back to REST API with v19...")
                 
-            logger.info(f"Final account count: {len(all_accounts)}")
-            return all_accounts
+                headers = {
+                    'Authorization': f'Bearer {credentials.token}',
+                    'developer-token': settings.GOOGLE_ADS_DEVELOPER_TOKEN
+                }
+                
+                # Use the current v19 API endpoint
+                list_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
+                
+                response = requests.get(list_url, headers=headers)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    if 'resourceNames' in data and data['resourceNames']:
+                        for resource_name in data['resourceNames']:
+                            customer_id = resource_name.split('/')[-1]
+                            # Format with hyphens for readability
+                            if len(customer_id) >= 10:
+                                formatted_id = f"{customer_id[:3]}-{customer_id[3:6]}-{customer_id[6:]}"
+                            else:
+                                formatted_id = customer_id
+                            all_accounts.append({"id": formatted_id, "name": f"Account {formatted_id}"})
+                        
+                        logger.info(f"Successfully found {len(all_accounts)} accounts via REST API v19")
+                        return all_accounts
+                    else:
+                        logger.warning("No accounts found with REST API v19")
+                else:
+                    logger.warning(f"REST API v19 failed: {response.status_code} - {response.text}")
+            
+            except Exception as rest_error:
+                logger.warning(f"REST API v19 approach failed: {str(rest_error)}")
+            
+            # If all API methods fail but we have a valid token, return empty list
+            if all_accounts:
+                return all_accounts
+            else:
+                return []
                 
         except Exception as e:
             logger.error(f"Error getting Google Ads customer IDs: {str(e)}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             
-            # Return the test account ID as last resort
-            test_account_id = "593-862-9374"
-            return [{"id": test_account_id, "name": f"Test Account {test_account_id} (Error occurred)"}]
-        
-        
-    def get_accessible_accounts(self, connection):
+            return []
+
+    def _enhance_account_information(self, client, accounts):
         """
-        Get all accessible Google Ads accounts for a connection.
-        This is a convenience method that calls get_adwords_customer_ids.
+        Enhance account information with descriptive names and additional details.
         
         Args:
-            connection: The PlatformConnection object
-            
-        Returns:
-            list: List of accounts with id and name
+            client: GoogleAdsClient instance
+            accounts: List of account dictionaries
         """
+        try:
+            # Only process if we have accounts
+            if not accounts:
+                return
+            
+            # Get the first account to use as a login customer ID
+            login_customer_id = accounts[0]["id"].replace("-", "")
+            
+            # Create a GoogleAdsService client
+            ga_service = client.get_service("GoogleAdsService")
+            
+            # Process each account to get more details
+            for account in accounts:
+                try:
+                    # Remove hyphens for API call
+                    customer_id = account["id"].replace("-", "")
+                    
+                    # Create query to get account information
+                    query = """
+                        SELECT
+                            customer.id,
+                            customer.descriptive_name,
+                            customer.currency_code,
+                            customer.time_zone,
+                            customer.auto_tagging_enabled
+                        FROM customer
+                        WHERE customer.id = %s
+                    """ % customer_id
+                    
+                    # Create the search request
+                    search_request = client.get_type("SearchGoogleAdsRequest")
+                    search_request.customer_id = login_customer_id
+                    search_request.query = query
+                    
+                    # Execute the query
+                    response = ga_service.search(request=search_request)
+                    
+                    # Update account information if we get results
+                    for row in response:
+                        customer = row.customer
+                        if customer.descriptive_name:
+                            account["name"] = customer.descriptive_name
+                        break
+                        
+                except Exception as account_error:
+                    # Log error but continue with next account
+                    logger.warning(f"Error enhancing account {account['id']}: {str(account_error)}")
+                    continue
+        
+        except Exception as e:
+            logger.warning(f"Error enhancing account information: {str(e)}")
+            # Continue with basic account information
+
+    def get_accessible_accounts(self, connection):
         return self.get_adwords_customer_ids(connection)

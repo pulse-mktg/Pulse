@@ -111,22 +111,22 @@ class GoogleAdsDataService:
             # Define the query
             query = """
                 SELECT 
-                  campaign.id, 
-                  campaign.name, 
-                  campaign.status,
-                  campaign.campaign_budget,
-                  campaign.advertising_channel_type,
-                  campaign.start_date,
-                  campaign.end_date,
-                  campaign.network_settings.target_search_network,
-                  campaign.network_settings.target_content_network,
-                  metrics.impressions,
-                  metrics.clicks,
-                  metrics.cost_micros,
-                  metrics.conversions,
-                  metrics.ctr,
-                  metrics.average_cpc,
-                  metrics.conversions_value
+                campaign.id, 
+                campaign.name, 
+                campaign.status,
+                campaign.campaign_budget,
+                campaign.advertising_channel_type,
+                campaign.start_date,
+                campaign.end_date,
+                campaign.network_settings.target_search_network,
+                campaign.network_settings.target_content_network,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.ctr,
+                metrics.average_cpc,
+                metrics.conversions_value
                 FROM campaign
                 WHERE campaign.status != 'REMOVED'
                 ORDER BY campaign.name
@@ -142,78 +142,99 @@ class GoogleAdsDataService:
             
             # Process each campaign
             for row in response:
-                campaign = row.campaign
-                metrics = row.metrics
-                
-                # Format campaign ID
-                campaign_id = str(campaign.id)
-                
-                # Get or create campaign in the database
-                db_campaign, created = GoogleAdsCampaign.objects.update_or_create(
-                    client_account=client_account,
-                    campaign_id=campaign_id,
-                    defaults={
-                        'name': campaign.name,
-                        'status': campaign.status.name,
-                        'campaign_type': campaign.advertising_channel_type.name if campaign.advertising_channel_type else None,
-                        'budget_amount': float(campaign.campaign_budget.split('/')[-1]) / 1000000 if campaign.campaign_budget else None,
-                        'start_date': self._format_google_date(campaign.start_date) if campaign.start_date else None,
-                        'end_date': self._format_google_date(campaign.end_date) if campaign.end_date else None,
-                        'last_synced': timezone.now()
-                    }
-                )
-                
-                # Calculate metrics for different date ranges
-                for date_range in ['LAST_7_DAYS', 'LAST_30_DAYS', 'LAST_90_DAYS']:
-                    # Get date start and end based on date range
-                    date_end = timezone.now().date()
-                    if date_range == 'LAST_7_DAYS':
-                        date_start = date_end - datetime.timedelta(days=7)
-                        date_range_days = 7
-                    elif date_range == 'LAST_30_DAYS':
-                        date_start = date_end - datetime.timedelta(days=30)
-                        date_range_days = 30
-                    else:  # LAST_90_DAYS
-                        date_start = date_end - datetime.timedelta(days=90)
-                        date_range_days = 90
+                try:
+                    campaign = row.campaign
+                    metrics = row.metrics
                     
-                    # Convert metrics
-                    impressions = int(metrics.impressions)
-                    clicks = int(metrics.clicks)
-                    cost = float(metrics.cost_micros) / 1000000  # Convert micros to dollars
-                    conversions = float(metrics.conversions)
+                    # Format campaign ID
+                    campaign_id = str(campaign.id)
                     
-                    # Calculate derived metrics
-                    ctr = float(metrics.ctr) * 100  # Convert to percentage
-                    avg_cpc = float(metrics.average_cpc) / 1000000  # Convert micros to dollars
-                    conversion_rate = (conversions / clicks * 100) if clicks > 0 else 0
-                    avg_daily_spend = cost / date_range_days
+                    # Get budget amount if available
+                    budget_amount = None
+                    if campaign.campaign_budget:
+                        # The budget comes as a resource name like 'customers/123/campaignBudgets/456'
+                        # We just want the ID part (456)
+                        try:
+                            budget_id = campaign.campaign_budget.split('/')[-1]
+                            # We'll store the budget ID for now - we can fetch actual amounts later
+                            budget_amount = float(budget_id) / 1000000
+                        except (IndexError, ValueError):
+                            budget_amount = None
                     
-                    # Update campaign metrics
-                    GoogleAdsMetrics.objects.update_or_create(
-                        campaign=db_campaign,
-                        ad_group=None,
-                        date_range=date_range,
+                    # Get or create campaign in the database
+                    db_campaign, created = GoogleAdsCampaign.objects.update_or_create(
+                        client_account=client_account,
+                        campaign_id=campaign_id,
                         defaults={
-                            'date_start': date_start,
-                            'date_end': date_end,
-                            'date_range_days': date_range_days,
-                            'impressions': impressions,
-                            'clicks': clicks,
-                            'cost': cost,
-                            'conversions': conversions,
-                            'ctr': ctr,
-                            'avg_cpc': avg_cpc,
-                            'conversion_rate': conversion_rate,
-                            'avg_daily_spend': avg_daily_spend
+                            'name': campaign.name,
+                            'status': str(campaign.status.name) if hasattr(campaign.status, 'name') else str(campaign.status),
+                            'campaign_type': str(campaign.advertising_channel_type.name) if hasattr(campaign.advertising_channel_type, 'name') else str(campaign.advertising_channel_type) if campaign.advertising_channel_type else None,
+                            'budget_amount': budget_amount,
+                            'start_date': self._format_google_date(campaign.start_date) if campaign.start_date else None,
+                            'end_date': self._format_google_date(campaign.end_date) if campaign.end_date else None,
+                            'last_synced': timezone.now()
                         }
                     )
-                
-                # Sync ad groups for this campaign
-                self._sync_ad_groups(client, customer_id, db_campaign)
-                
-                # Sync daily metrics for this campaign
-                self._sync_daily_metrics(client, customer_id, db_campaign)
+                    
+                    # Calculate metrics for different date ranges
+                    for date_range in ['LAST_7_DAYS', 'LAST_30_DAYS', 'LAST_90_DAYS']:
+                        try:
+                            # Get date start and end based on date range
+                            date_end = timezone.now().date()
+                            if date_range == 'LAST_7_DAYS':
+                                date_start = date_end - datetime.timedelta(days=7)
+                                date_range_days = 7
+                            elif date_range == 'LAST_30_DAYS':
+                                date_start = date_end - datetime.timedelta(days=30)
+                                date_range_days = 30
+                            else:  # LAST_90_DAYS
+                                date_start = date_end - datetime.timedelta(days=90)
+                                date_range_days = 90
+                            
+                            # Convert metrics - handle cases where metrics might be missing
+                            impressions = int(metrics.impressions) if hasattr(metrics, 'impressions') else 0
+                            clicks = int(metrics.clicks) if hasattr(metrics, 'clicks') else 0
+                            cost = float(metrics.cost_micros) / 1000000 if hasattr(metrics, 'cost_micros') else 0  # Convert micros to dollars
+                            conversions = float(metrics.conversions) if hasattr(metrics, 'conversions') else 0
+                            
+                            # Calculate derived metrics
+                            ctr = float(metrics.ctr) * 100 if hasattr(metrics, 'ctr') and metrics.ctr else 0  # Convert to percentage
+                            avg_cpc = float(metrics.average_cpc) / 1000000 if hasattr(metrics, 'average_cpc') and metrics.average_cpc else 0  # Convert micros to dollars
+                            conversion_rate = (conversions / clicks * 100) if clicks > 0 else 0
+                            avg_daily_spend = cost / date_range_days if date_range_days else 0
+                            
+                            # Update campaign metrics
+                            GoogleAdsMetrics.objects.update_or_create(
+                                campaign=db_campaign,
+                                ad_group=None,
+                                date_range=date_range,
+                                defaults={
+                                    'date_start': date_start,
+                                    'date_end': date_end,
+                                    'date_range_days': date_range_days,
+                                    'impressions': impressions,
+                                    'clicks': clicks,
+                                    'cost': cost,
+                                    'conversions': conversions,
+                                    'ctr': ctr,
+                                    'avg_cpc': avg_cpc,
+                                    'conversion_rate': conversion_rate,
+                                    'avg_daily_spend': avg_daily_spend
+                                }
+                            )
+                        except Exception as metric_error:
+                            logger.warning(f"Error processing metrics for campaign {campaign_id}, date range {date_range}: {str(metric_error)}")
+                            continue
+                    
+                    # Sync ad groups for this campaign
+                    self._sync_ad_groups(client, customer_id, db_campaign)
+                    
+                    # Sync daily metrics for this campaign
+                    self._sync_daily_metrics(client, customer_id, db_campaign)
+                    
+                except Exception as campaign_error:
+                    logger.error(f"Error processing campaign {getattr(campaign, 'id', 'unknown')}: {str(campaign_error)}")
+                    continue
             
         except GoogleAdsException as gae:
             for error in gae.failure.errors:

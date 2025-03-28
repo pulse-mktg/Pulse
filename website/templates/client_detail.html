@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="row mb-2">
@@ -107,54 +108,79 @@
         </div>
     </div>
     
-    <div class="col-md-8">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0">Connected Platforms</h5>
-            </div>
-            <div class="card-body">
-                {% if platform_accounts %}
-                <div class="row">
-                    {% for account in platform_accounts %}
-                    <div class="col-md-6 mb-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="me-2">
-                                    <i class="bi {{ account.platform_connection.platform_type.icon_class }}" style="font-size: 1.5rem;"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">{{ account.platform_connection.platform_type.name }}</h6>
-                                    <small class="text-muted">{{ account.platform_client_name }}</small>
-                                </div>
+    <!-- Connected Platforms Section - Enhanced -->
+<!-- Connected Platforms Section - Enhanced -->
+<div class="col-md-8">
+    <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Connected Platforms</h5>
+            <a href="{% url 'connect_platform' client.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-link-45deg me-1"></i> Connect New Platform
+            </a>
+        </div>
+        <div class="card-body">
+            {% if has_google_ads_connection or platform_accounts %}
+            <div class="row">
+                <!-- Google Ads Platform Card -->
+                {% if has_google_ads_connection %}
+                <div class="col-md-6 mb-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-2">
+                                <i class="bi bi-google" style="font-size: 1.5rem;"></i>
                             </div>
-                            
-                            <div class="mt-2 text-center">
-                                {% if account.platform_connection.platform_type.slug == 'google-ads' %}
-                                <a href="{% url 'google_ads_campaigns' client.id account.id %}" class="btn btn-sm btn-outline-primary w-100">
-                                    <i class="bi bi-graph-up me-1"></i> View Campaigns
-                                </a>
-                                {% else %}
-                                <a href="#" class="btn btn-sm btn-outline-secondary w-100 disabled">
-                                    <i class="bi bi-graph-up me-1"></i> View Data
-                                </a>
-                                {% endif %}
+                            <div>
+                                <h6 class="mb-0">Google Ads</h6>
+                                <small class="text-muted">
+                                    {% with google_accounts=platform_accounts|filter_by_platform:'google-ads' %}
+                                        {% if google_accounts %}
+                                            {{ google_accounts|length }} account{{ google_accounts|length|pluralize }} connected
+                                        {% else %}
+                                            Not connected to client
+                                        {% endif %}
+                                    {% endwith %}
+                                </small>
                             </div>
                         </div>
+                        
+                        <button class="btn btn-sm btn-primary w-100 manage-platform-btn" 
+                        data-platform-id="{{ google_ads_platform_type.id }}"
+                        data-platform-slug="google-ads"
+                        data-platform-name="Google Ads" 
+                        data-coreui-toggle="modal" 
+                        data-coreui-target="#managePlatformModal">
+                    <i class="bi bi-gear-fill me-1"></i> Manage Accounts
+                </button>
                     </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
-                    <p class="mt-3 text-muted">No platform accounts connected yet.</p>
-                    <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
-                        <i class="bi bi-plus-circle me-1"></i> Connect Platform
-                    </a>
                 </div>
                 {% endif %}
+                
+                <!-- Other platform cards would go here in the same format -->
+                
             </div>
+            
+            <!-- Hidden data elements for JavaScript to use -->
+            {% for account in platform_accounts %}
+            <div class="d-none" 
+                 data-account-platform="{{ account.platform_connection.platform_type.slug }}"
+                 data-account-id="{{ account.id }}"
+                 data-account-name="{{ account.platform_client_name }}"
+                 data-client-id="{{ account.platform_client_id }}">
+            </div>
+            {% endfor %}
+            
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
+                <p class="mt-3 text-muted">No platform accounts connected yet.</p>
+                <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle me-1"></i> Connect Platform
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
+</div>
 </div>
 
 <!-- Groups & Budgets Row -->
@@ -336,6 +362,47 @@
                 <i class="bi bi-graph-up" style="font-size: 3rem; color: #8a93a2;"></i>
                 <h5 class="mt-3">Performance Metrics Coming Soon</h5>
                 <p class="text-muted mb-0">Connect platform accounts to see performance metrics here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Platform Accounts Modal -->
+<!-- Modify the Manage Platform Accounts Modal section in client_detail.html -->
+<div class="modal fade" id="managePlatformModal" tabindex="-1" aria-labelledby="managePlatformModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="managePlatformModalLabel">Manage <span id="platformName"></span> Accounts</h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Current Connected Accounts Section -->
+                <div class="mb-4">
+                    <h6>Connected Accounts</h6>
+                    <div id="connectedAccountsList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2">Loading accounts...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- Available Accounts Section -->
+                <div>
+                    <h6>Available Accounts</h6>
+                    <div id="availableAccountsList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2">Loading available accounts...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -546,30 +613,237 @@
     </div>
 </div>
 
-<!-- JavaScript for Competitor Management -->
+
+<!-- JavaScript for Platform Account Management -->
 <script>
+// JavaScript for Platform Account Management
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle delete competitor buttons
-    const deleteButtons = document.querySelectorAll('.delete-competitor-btn');
-    const deleteModal = new coreui.Modal(document.getElementById('deleteCompetitorModal'));
-    const deleteForm = document.getElementById('deleteCompetitorForm');
-    const deleteNameSpan = document.getElementById('deleteCompetitorName');
+    // Get modal elements
+    const managePlatformModal = document.getElementById('managePlatformModal');
+    const platformNameElement = document.getElementById('platformName');
+    const connectedAccountsList = document.getElementById('connectedAccountsList');
+    const availableAccountsList = document.getElementById('availableAccountsList');
     
-    deleteButtons.forEach(button => {
+    // Handle clicking on manage platform buttons
+    // Handle clicking on manage platform buttons
+    const managePlatformButtons = document.querySelectorAll('.manage-platform-btn');
+    managePlatformButtons.forEach(button => {
         button.addEventListener('click', function() {
-            const competitorId = this.getAttribute('data-competitor-id');
-            const competitorName = this.getAttribute('data-competitor-name');
+            const platformId = this.getAttribute('data-platform-id');
+            console.log('Platform ID:', platformId); // Debug line to check the ID value
+            const platformName = this.getAttribute('data-platform-name');
             
-            // Set the competitor name in the modal
-            deleteNameSpan.textContent = competitorName;
+            // Update modal title
+            platformNameElement.textContent = platformName;
             
-            // Set the form action
-            deleteForm.action = `/client/{{ client.id }}/competitor/${competitorId}/delete/`;
+            // Reset lists
+            connectedAccountsList.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Loading accounts...</span>
+                </div>
+            `;
             
-            // Show the modal
-            deleteModal.show();
+            availableAccountsList.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Loading available accounts...</span>
+                </div>
+            `;
+            
+            // Load connected accounts
+            loadConnectedAccounts(this.getAttribute('data-platform-slug'));
+            
+            // Load available accounts
+            loadAvailableAccounts(platformId);
         });
     });
+    
+    // Function to load connected accounts
+    function loadConnectedAccounts(platformSlug) {
+        const connectedAccounts = [];
+        
+        // Find accounts for this platform in the DOM data attributes
+        document.querySelectorAll('[data-account-platform="' + platformSlug + '"]').forEach(el => {
+            connectedAccounts.push({
+                id: el.getAttribute('data-account-id'),
+                name: el.getAttribute('data-account-name'),
+                clientId: el.getAttribute('data-client-id')
+            });
+        });
+        
+        if (connectedAccounts.length > 0) {
+            connectedAccountsList.innerHTML = `
+                <div class="list-group">
+                    ${connectedAccounts.map(account => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${account.name}</strong>
+                                <div class="small text-muted">ID: ${account.clientId}</div>
+                            </div>
+                            <div class="btn-group">
+                                <a href="/client/{{ client.id }}/google-ads/${account.id}/" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-graph-up me-1"></i> View
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="removeAccount('${account.id}', '${account.name}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            connectedAccountsList.innerHTML = `
+                <div class="alert alert-info">
+                    No accounts connected to this client yet.
+                </div>
+            `;
+        }
+    }
+    
+    // Function to load available accounts from API
+    function loadAvailableAccounts(platformId) {
+        // Fetch data from the API endpoint we have configured
+        fetch(`/api/platform/${platformId}/accounts/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.accounts && data.accounts.length > 0) {
+                    availableAccountsList.innerHTML = `
+                        <div class="mb-3">
+                            <input type="text" class="form-control" 
+                                   placeholder="Search available accounts..." 
+                                   id="accountSearchInput">
+                        </div>
+                        <div class="list-group">
+                            ${data.accounts.map(account => `
+                                <div class="list-group-item list-group-item-action account-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${account.name}</strong>
+                                            <div class="small text-muted">ID: ${account.id}</div>
+                                        </div>
+                                        <button class="btn btn-sm btn-success"
+                                                onclick="linkAccount('${account.id}', '${account.name}')">
+                                            <i class="bi bi-plus-circle me-1"></i> Add
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    // Setup search functionality
+                    setupAccountSearch();
+                } else {
+                    availableAccountsList.innerHTML = `
+                        <div class="alert alert-warning">
+                            No additional accounts available to connect.
+                            <a href="{% url 'tenant_platforms' %}" class="alert-link">
+                                Connect more accounts at tenant level
+                            </a>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching accounts:', error);
+                availableAccountsList.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error loading available accounts. Please try again.
+                    </div>
+                `;
+            });
+    }
+    
+    // Function to setup account search
+    function setupAccountSearch() {
+        const searchInput = document.getElementById('accountSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const accountItems = document.querySelectorAll('.account-item');
+                
+                accountItems.forEach(item => {
+                    const accountName = item.querySelector('strong').textContent.toLowerCase();
+                    const accountId = item.querySelector('.small.text-muted').textContent.toLowerCase();
+                    
+                    if (accountName.includes(searchTerm) || accountId.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+    }
 });
+
+// Window-level functions for onclick handlers
+window.linkAccount = function(accountId, accountName) {
+    // Create and submit a form to link this account
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{% url 'add_client_google_ads' client.id %}";
+    
+    // Add CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+    
+    // Add account ID
+    const accountIdInput = document.createElement('input');
+    accountIdInput.type = 'hidden';
+    accountIdInput.name = 'platform_client_id';
+    accountIdInput.value = accountId;
+    form.appendChild(accountIdInput);
+    
+    // Add account name
+    const accountNameInput = document.createElement('input');
+    accountNameInput.type = 'hidden';
+    accountNameInput.name = 'platform_client_name';
+    accountNameInput.value = accountName;
+    form.appendChild(accountNameInput);
+    
+    // Add connection ID for Google Ads
+    {% if google_ads_connection %}
+    const connectionIdInput = document.createElement('input');
+    connectionIdInput.type = 'hidden';
+    connectionIdInput.name = 'connection_id';
+    connectionIdInput.value = '{{ google_ads_connection.id }}';
+    form.appendChild(connectionIdInput);
+    {% endif %}
+    
+    // Submit the form
+    document.body.appendChild(form);
+    form.submit();
+};
+
+window.removeAccount = function(accountId, accountName) {
+    if (confirm(`Are you sure you want to remove ${accountName} from this client?`)) {
+        // Create and submit a form to remove this account
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/client-platform-account/${accountId}/remove/`;
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+};
+
 </script>
 {% endblock %}

@@ -223,8 +223,8 @@ def create_client(request):
 @login_required
 def client_detail(request, client_id):
     """
-    View for viewing client details with optimized database queries
-    Now includes competitor information
+    View for viewing client details with optimized database queries.
+    Includes platform connections, client groups, budgets, and competitors.
     """
     # Use select_related to fetch tenant in the same query
     client = get_object_or_404(
@@ -291,8 +291,57 @@ def client_detail(request, client_id):
         is_active=True
     ).exists()
     
+    # Get the Google Ads connection for the tenant if it exists
+    google_ads_connection = None
+    if has_google_ads_connection:
+        google_ads_connection = PlatformConnection.objects.filter(
+            tenant=client.tenant,
+            platform_type__slug='google-ads',
+            is_active=True
+        ).first()
+    
+    # Get available platform types for this tenant
+    available_platforms = PlatformType.objects.filter(
+        is_available=True
+    ).order_by('position', 'name')
+    
+    # Check which platforms are connected for this tenant
+    # Use values_list() to fetch only the ids we need
+    connected_platform_ids = PlatformConnection.objects.filter(
+        tenant=client.tenant,
+        is_active=True
+    ).values_list('platform_type_id', flat=True)
+    
+    # Prepare the platforms with connection status
+    tenant_platforms = []
+    for platform in available_platforms:
+        is_connected = platform.id in connected_platform_ids
+        
+        # Check if client has accounts for this platform
+        has_client_accounts = any(
+            account.platform_connection.platform_type_id == platform.id 
+            for account in active_platform_accounts
+        )
+        
+        tenant_platforms.append({
+            'id': platform.id,
+            'name': platform.name,
+            'slug': platform.slug,
+            'description': platform.description,
+            'icon_class': platform.icon_class,
+            'is_connected': is_connected,
+            'has_client_accounts': has_client_accounts
+        })
+    
     # Check if we have any accounts directly
     has_accounts = client_platform_accounts.exists()
+    
+    # Get Google Ads platform type for the add account button
+    google_ads_platform_type = None
+    try:
+        google_ads_platform_type = PlatformType.objects.get(slug='google-ads')
+    except PlatformType.DoesNotExist:
+        pass
     
     context = {
         'client': client,
@@ -301,11 +350,14 @@ def client_detail(request, client_id):
         'has_auto_groups': has_auto_groups,
         'grouped_accounts': grouped_accounts,
         'has_google_ads_connection': has_google_ads_connection,
+        'google_ads_connection': google_ads_connection,
         'has_accounts': has_accounts,
         'platform_accounts': active_platform_accounts,
         'client_groups': active_client_groups,
         'client_budgets': client_budgets,
-        'competitors': competitors,  # Add competitors to context
+        'competitors': competitors,
+        'tenant_platforms': tenant_platforms,
+        'google_ads_platform_type': google_ads_platform_type,
         'page_title': client.name
     }
     return render(request, 'client_detail.html', context)
@@ -1828,42 +1880,59 @@ def create_budget_alert(request, budget_id):
 
 @login_required
 def platform_accounts_api(request, platform_id):
-    """API endpoint to get accounts for a platform"""
-    # Get the selected tenant from session
-    selected_tenant_id = request.session.get('selected_tenant_id')
-    
-    if not selected_tenant_id:
-        return JsonResponse({'error': 'No tenant selected'}, status=400)
-    
-    # Verify access to tenant
-    tenant = get_object_or_404(Tenant, id=selected_tenant_id, users=request.user)
-    platform = get_object_or_404(PlatformType, id=platform_id)
-    
-    # Get accounts for this platform and tenant
-    accounts = []
-    
-    platform_connections = PlatformConnection.objects.filter(
-        tenant=tenant,
-        platform_type=platform,
-        is_active=True
-    )
-    
-    for connection in platform_connections:
-        client_accounts = ClientPlatformAccount.objects.filter(
-            platform_connection=connection,
-            is_active=True
-        ).select_related('client')
+    """API endpoint to get available Google Ads accounts for linking to clients"""
+    try:
+        # Get the selected tenant
+        selected_tenant_id = request.session.get('selected_tenant_id')
+        if not selected_tenant_id:
+            return JsonResponse({'error': 'No tenant selected'}, status=400)
         
-        for account in client_accounts:
-            accounts.append({
-                'id': account.id,
-                'name': f"{account.platform_client_name} ({account.client.name})",
-                'client_id': account.client.id,
-                'client_name': account.client.name
-            })
+        # Verify user has access to tenant
+        tenant = get_object_or_404(Tenant, id=selected_tenant_id, users=request.user)
+        
+        # Get the platform type
+        try:
+            platform_type = PlatformType.objects.get(id=platform_id)
+        except PlatformType.DoesNotExist:
+            return JsonResponse({'error': f'Platform type with ID {platform_id} not found'}, status=404)
+        
+        # Get active connections for this platform type
+        connections = PlatformConnection.objects.filter(
+            tenant=tenant,
+            platform_type=platform_type,
+            is_active=True
+        )
+        
+        if not connections.exists():
+            return JsonResponse({'accounts': [], 'message': 'No active connections for this platform'})
+        
+        # For Google Ads, fetch available accounts
+        if platform_type.slug == 'google-ads':
+            try:
+                # Initialize service
+                from .services.google_ads import GoogleAdsService
+                service = GoogleAdsService(tenant)
+                
+                # Use the first active connection to get accounts
+                connection = connections.first()
+                accounts = service.get_adwords_customer_ids(connection)
+                
+                # Return the accounts
+                return JsonResponse({'accounts': accounts})
+            except Exception as e:
+                import traceback
+                logger.error(f"Error fetching Google Ads accounts: {str(e)}")
+                logger.error(traceback.format_exc())
+                return JsonResponse({'error': str(e), 'accounts': []}, status=500)
+        
+        # Default response for other platforms
+        return JsonResponse({'accounts': [], 'message': f'No implementation for platform: {platform_type.slug}'})
     
-    return JsonResponse({'accounts': accounts})
-
+    except Exception as e:
+        import traceback
+        logger.error(f"Unexpected error in platform_accounts_api: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'error': str(e), 'accounts': []}, status=500)
 
 @login_required
 def account_campaigns_api(request, account_id):
