@@ -24,7 +24,7 @@ urlpatterns = [
     
     # Tenant creation URL (admin-only)
     path('create-tenant/', views.create_tenant, name='create_tenant'),
-    
+
     # Client management URLs
     path('create-client/', views.create_client, name='create_client'),
     path('client/<int:client_id>/', views.client_detail, name='client_detail'),
@@ -33,7 +33,8 @@ urlpatterns = [
     path('api/archived-clients/', views.archived_clients_api, name='archived_clients_api'),
     path('api/client/<int:client_id>/unarchive/', views.unarchive_client, name='unarchive_client'),
     path('client/<int:client_id>/dashboard/', dashboard_views.client_dashboard, name='client_dashboard'),  # Use new dashboard view
-    
+    path('api/platform/<int:platform_id>/accounts/', views.platform_accounts_api, name='platform_accounts_api'),
+
     # Competitor Management URLs
     path('client/<int:client_id>/competitor/add/', views.add_competitor, name='add_competitor'),
     path('client/<int:client_id>/competitor/<int:competitor_id>/edit/', views.edit_competitor, name='edit_competitor'),
@@ -49,18 +50,17 @@ urlpatterns = [
     path('client/<int:client_id>/connect-platform/', views.connect_platform, name='connect_platform'),
     path('client/<int:client_id>/platform/<int:platform_id>/connect/', views.initiate_platform_connection, name='initiate_platform_connection'),
     path('client/<int:client_id>/platform/<int:platform_id>/manage/', views.manage_platform_connection, name='manage_platform_connection'),
+    path('client/<int:client_id>/platform/<int:platform_id>/add-account/<str:account_id>/', views.add_client_platform_account, name='add_client_platform_account'),
     path('oauth-callback/', views.oauth_callback, name='oauth_callback'),
-    path('client/<int:client_id>/add-google-ads/', views.add_client_google_ads, name='add_client_google_ads'),
     path('client-platform-account/<int:account_id>/remove/', views.remove_client_platform_account, name='remove_client_platform_account'),
     path('client-platform-account/<int:account_id>/reactivate/', views.reactivate_client_platform_account, name='reactivate_client_platform_account'),
-    
 
 
     # Google Ads Data URLs
     path('client/<int:client_id>/google-ads/<int:account_id>/', google_ads_views.google_ads_campaigns, name='google_ads_campaigns'),
     path('client/<int:client_id>/google-ads/<int:account_id>/campaign/<int:campaign_id>/', google_ads_views.google_ads_campaign_detail, name='google_ads_campaign_detail'),
     path('client/<int:client_id>/google-ads/<int:account_id>/sync/', google_ads_views.sync_google_ads_data, name='sync_google_ads_data'),
-
+    path('client/<int:client_id>/google-ads/sync/', google_ads_views.sync_google_ads_data, name='sync_google_ads_client_data'),
     # Client Group URLs
     path('client-groups/', views.client_groups, name='client_groups'),
     path('client-groups/create/', views.create_client_group, name='create_client_group'),

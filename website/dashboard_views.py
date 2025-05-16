@@ -473,6 +473,21 @@ def agency_dashboard(request):
     
     return render(request, 'agency_dashboard.html', context)
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Sum, Avg, Count, F, Q, Case, When, Value, DecimalField, IntegerField, FloatField, ExpressionWrapper
+from django.db.models.functions import Coalesce
+from django.contrib import messages
+from django.utils import timezone
+from datetime import timedelta, datetime
+import json
+import calendar
+
+from .models import (
+    Tenant, Client, ClientGroup, Budget, PlatformConnection, ClientPlatformAccount,
+    GoogleAdsCampaign, GoogleAdsMetrics, GoogleAdsDailyMetrics
+)
+
+# Update the client_dashboard function
 @login_required
 def client_dashboard(request, client_id):
     """
@@ -488,12 +503,42 @@ def client_dashboard(request, client_id):
     # Update session with correct tenant
     request.session['selected_tenant_id'] = client.tenant.id
     
-    # Define date ranges
+    # Get URL parameters
+    account_id = request.GET.get('account_id')
+    date_range = request.GET.get('date_range', '7d')  # Default to last 7 days
+    
+    # Calculate date ranges based on the selected range
     today = timezone.now().date()
-    period_end = today
-    period_start = today - timedelta(days=30)
+    
+    if date_range == '7d':
+        period_end = today
+        period_start = today - timedelta(days=6)  # Last 7 days including today
+        date_range_label = 'Last 7 Days'
+    elif date_range == '30d':
+        period_end = today
+        period_start = today - timedelta(days=29)  # Last 30 days including today
+        date_range_label = 'Last 30 Days'
+    elif date_range == 'month':
+        # Current month
+        period_start = today.replace(day=1)
+        period_end = today
+        date_range_label = f'{today.strftime("%B %Y")}'
+    elif date_range == 'last_month':
+        # Previous month
+        last_month = today.replace(day=1) - timedelta(days=1)
+        period_start = last_month.replace(day=1)
+        period_end = last_month.replace(day=calendar.monthrange(last_month.year, last_month.month)[1])
+        date_range_label = f'{last_month.strftime("%B %Y")}'
+    else:
+        # Default to last 7 days
+        period_end = today
+        period_start = today - timedelta(days=6)
+        date_range_label = 'Last 7 Days'
+    
+    # Calculate comparison period (same length, previous period)
+    period_length = (period_end - period_start).days + 1
     comparison_end = period_start - timedelta(days=1)
-    comparison_start = comparison_end - timedelta(days=30)
+    comparison_start = comparison_end - timedelta(days=period_length-1)
     
     # Get platform accounts
     platform_accounts = ClientPlatformAccount.objects.filter(
@@ -501,6 +546,20 @@ def client_dashboard(request, client_id):
         is_active=True
     ).select_related(
         'platform_connection__platform_type'
+    )
+    
+    # Filter by selected account if provided
+    if account_id:
+        selected_account = get_object_or_404(ClientPlatformAccount, id=account_id, client=client)
+        accounts_to_query = [selected_account]
+        selected_account_id = int(account_id)
+    else:
+        accounts_to_query = platform_accounts
+        selected_account_id = None
+    
+    # Get all Google Ads accounts
+    google_ads_accounts = platform_accounts.filter(
+        platform_connection__platform_type__slug='google-ads'
     )
     
     # Get client groups this client belongs to
@@ -512,9 +571,40 @@ def client_dashboard(request, client_id):
         is_active=True
     ).select_related('client', 'client_group')
     
-    # Get performance metrics for the client
+    # Get campaigns for the selected account(s)
+    campaigns = GoogleAdsCampaign.objects.filter(
+        client_account__in=accounts_to_query
+    ).select_related(
+        'client_account'
+    )
+    
+    # Fetch the latest metrics for each campaign
+    for campaign in campaigns:
+        # First try to get metrics for the specified date range
+        metric = GoogleAdsMetrics.objects.filter(
+            campaign=campaign,
+            date_range='LAST_30_DAYS'  # Default to 30 days if no exact match
+        ).first()
+        
+        if metric:
+            # Directly attach metrics to campaign
+            campaign.metrics_data = metric
+        else:
+            # Create empty metrics if none exist
+            from types import SimpleNamespace
+            campaign.metrics_data = SimpleNamespace(
+                impressions=0,
+                clicks=0,
+                cost=0,
+                conversions=0,
+                ctr=0,
+                avg_cpc=0,
+                conversion_rate=0
+            )
+    
+    # Get performance metrics for the selected account(s) in the selected period
     metrics = GoogleAdsMetrics.objects.filter(
-        campaign__client_account__in=platform_accounts,
+        campaign__client_account__in=accounts_to_query,
         date_start__gte=period_start,
         date_end__lte=period_end
     ).aggregate(
@@ -527,7 +617,7 @@ def client_dashboard(request, client_id):
     
     # Get comparison period metrics
     comparison_metrics = GoogleAdsMetrics.objects.filter(
-        campaign__client_account__in=platform_accounts,
+        campaign__client_account__in=accounts_to_query,
         date_start__gte=comparison_start,
         date_end__lte=comparison_end
     ).aggregate(
@@ -550,10 +640,10 @@ def client_dashboard(request, client_id):
     comparison_conversions = float(comparison_metrics['conversions'] or 1)
     
     # Explicit type conversion for all calculations
-    impressions_change = ((impressions - comparison_impressions) / comparison_impressions) * 100.0
-    clicks_change = ((clicks - comparison_clicks) / comparison_clicks) * 100.0
-    cost_change = ((cost - comparison_cost) / comparison_cost) * 100.0
-    conversions_change = ((conversions - comparison_conversions) / comparison_conversions) * 100.0
+    impressions_change = ((impressions - comparison_impressions) / comparison_impressions) * 100.0 if comparison_impressions > 0 else 0
+    clicks_change = ((clicks - comparison_clicks) / comparison_clicks) * 100.0 if comparison_clicks > 0 else 0
+    cost_change = ((cost - comparison_cost) / comparison_cost) * 100.0 if comparison_cost > 0 else 0
+    conversions_change = ((conversions - comparison_conversions) / comparison_conversions) * 100.0 if comparison_conversions > 0 else 0
     
     # Calculate additional metrics - explicit type conversions
     ctr = (float(clicks) / float(impressions) * 100.0) if impressions > 0 else 0.0
@@ -574,7 +664,7 @@ def client_dashboard(request, client_id):
     
     # Get daily performance data for charts
     daily_metrics = GoogleAdsDailyMetrics.objects.filter(
-        campaign__client_account__in=platform_accounts,
+        campaign__client_account__in=accounts_to_query,
         date__gte=period_start,
         date__lte=period_end
     ).values('date').annotate(
@@ -600,239 +690,28 @@ def client_dashboard(request, client_id):
         performance_cost.append(float(metric['day_cost']))
         performance_conversions.append(float(metric['day_conversions']))
     
-    # Get budget utilization data
-    total_budget = 0.0
-    total_spend = cost
-    budget_data = []
-    
-    for budget in client_budgets:
-        # Calculate budget utilization - explicit float conversion
-        budget_amount = float(budget.amount)
-        total_budget += budget_amount
-        
-        # Calculate days elapsed in budget period
-        start_date = max(budget.start_date, period_start)
-        end_date = min(budget.end_date, period_end)
-        
-        if start_date <= end_date:
-            budget_days = (budget.end_date - budget.start_date).days + 1
-            elapsed_days = (today - budget.start_date).days + 1 if today >= budget.start_date else 0
-            elapsed_days = min(elapsed_days, budget_days)
-            
-            # Explicit float calculations
-            expected_spend = (budget_amount * float(elapsed_days)) / float(budget_days) if budget_days > 0 else 0.0
-            spent_percentage = (cost / budget_amount * 100.0) if budget_amount > 0 else 0.0
-            expected_percentage = (expected_spend / budget_amount * 100.0) if budget_amount > 0 else 0.0
-            
-            # Determine status
-            variance = ((cost / expected_spend) - 1.0) * 100.0 if expected_spend > 0 else 0.0
-            status = 'on-track'
-            if variance < -15:
-                status = 'underspend'
-            elif variance > 15:
-                status = 'overspend'
-            
-            budget_data.append({
-                'id': budget.id,
-                'name': budget.name,
-                'amount': budget_amount,
-                'spent': cost,
-                'expected': expected_spend,
-                'spent_percentage': spent_percentage,
-                'expected_percentage': expected_percentage,
-                'variance': variance,
-                'status': status,
-                'start_date': budget.start_date,
-                'end_date': budget.end_date,
-                'days_elapsed': elapsed_days,
-                'total_days': budget_days,
-                'days_remaining': budget_days - elapsed_days
-            })
-    
-    # Calculate overall budget utilization
-    budget_utilization = (total_spend / total_budget * 100.0) if total_budget > 0 else 0.0
-    
-    # Get device performance data (placeholder for now)
-    device_data = {
-        'mobile': {
-            'percentage': 64.2,
-            'clicks': 5612,
-            'ctr': 3.42,
-            'conversion_rate': 3.85,
-            'cpc': 1.38,
-            'cpa': 35.84
-        },
-        'desktop': {
-            'percentage': 23.8,
-            'clicks': 2080,
-            'ctr': 3.75,
-            'conversion_rate': 4.52,
-            'cpc': 1.58,
-            'cpa': 34.95
-        },
-        'tablet': {
-            'percentage': 12.0,
-            'clicks': 1049,
-            'ctr': 3.28,
-            'conversion_rate': 3.72,
-            'cpc': 1.35,
-            'cpa': 36.29
-        }
-    }
-    
-    # Get platform distribution data
-    platform_distribution = []
-    platform_spend = {}
-    
-    for account in platform_accounts:
-        platform_slug = account.platform_connection.platform_type.slug
-        platform_name = account.platform_connection.platform_type.name
-        
-        # Get metrics for this account
-        account_metrics = GoogleAdsMetrics.objects.filter(
-            campaign__client_account=account,
-            date_start__gte=period_start,
-            date_end__lte=period_end
-        ).aggregate(
-            # Explicit output field
-            account_cost=Coalesce(Sum('cost'), Value(0), output_field=DecimalField(max_digits=10, decimal_places=2))
-        )
-        
-        account_spend = float(account_metrics['account_cost'] or 0)
-        
-        if platform_slug not in platform_spend:
-            platform_spend[platform_slug] = {
-                'name': platform_name,
-                'slug': platform_slug,
-                'spend': 0.0
-            }
-        
-        platform_spend[platform_slug]['spend'] += account_spend
-    
-    # Calculate percentages - explicit float
-    total_platform_spend = sum(platform['spend'] for platform in platform_spend.values())
-    
-    platform_labels = []
-    platform_data = []
-    platform_colors = []
-    
-    # Define colors for platforms
-    platform_color_map = {
-        'google-ads': 'rgba(66, 133, 244, 0.8)',
-        'facebook-ads': 'rgba(59, 89, 152, 0.8)',
-        'linkedin-ads': 'rgba(0, 119, 181, 0.8)',
-        'twitter-ads': 'rgba(29, 161, 242, 0.8)',
-        'default': 'rgba(108, 117, 125, 0.8)'
-    }
-    
-    for slug, data in platform_spend.items():
-        percentage = (data['spend'] / total_platform_spend * 100.0) if total_platform_spend > 0 else 0.0
-        platform_distribution.append({
-            'name': data['name'],
-            'slug': slug,
-            'spend': data['spend'],
-            'percentage': percentage
-        })
-        
-        platform_labels.append(data['name'])
-        platform_data.append(data['spend'])
-        platform_colors.append(platform_color_map.get(slug, platform_color_map['default']))
-    
-    # Get top performing campaigns
-    campaigns = GoogleAdsCampaign.objects.filter(
-        client_account__in=platform_accounts
-    )
-    
-    top_campaigns = []
-    for campaign in campaigns:
-        # Get metrics for this campaign
-        campaign_metrics = GoogleAdsMetrics.objects.filter(
-            campaign=campaign,
-            date_start__gte=period_start,
-            date_end__lte=period_end
-        ).first()
-        
-        if campaign_metrics:
-            # Calculate derived metrics - explicit float conversion
-            campaign_conversions = float(campaign_metrics.conversions or 0)
-            campaign_clicks = int(campaign_metrics.clicks or 0)
-            campaign_cost = float(campaign_metrics.cost or 0)
-            
-            conversion_rate = (campaign_conversions / campaign_clicks * 100.0) if campaign_clicks > 0 else 0.0
-            cpa = (campaign_cost / campaign_conversions) if campaign_conversions > 0 else 0.0
-            
-            # Get platform info
-            platform_slug = campaign.client_account.platform_connection.platform_type.slug
-            platform_name = campaign.client_account.platform_connection.platform_type.name
-            
-            top_campaigns.append({
-                'id': campaign.id,
-                'name': campaign.name,
-                'type': campaign.campaign_type or 'Standard',
-                'platform_slug': platform_slug,
-                'platform_name': platform_name,
-                'status': campaign.status,
-                'conversions': campaign_conversions,
-                'conversion_rate': conversion_rate,
-                'cost': campaign_cost,
-                'cpa': cpa,
-                'account_id': campaign.client_account.id
-            })
-    
-    # Sort by conversions and limit to top 5
-    top_campaigns.sort(key=lambda x: x['conversions'], reverse=True)
-    top_campaigns = top_campaigns[:5]
-    
-    # Get geographic performance (placeholder data)
-    geo_performance = [
-        {'region': 'California', 'clicks': 1485, 'conversions': 68, 'conversion_rate': 4.58},
-        {'region': 'New York', 'clicks': 1236, 'conversions': 53, 'conversion_rate': 4.29},
-        {'region': 'Texas', 'clicks': 952, 'conversions': 41, 'conversion_rate': 4.31},
-        {'region': 'Florida', 'clicks': 873, 'conversions': 39, 'conversion_rate': 4.47},
-        {'region': 'Illinois', 'clicks': 712, 'conversions': 31, 'conversion_rate': 4.35},
-        {'region': 'Others', 'clicks': 3483, 'conversions': 124, 'conversion_rate': 3.56}
-    ]
-    
-    # Get recent activity (placeholder)
-    recent_activity = [
-        {
-            'title': 'Budget threshold alert',
-            'description': f'Campaign is approaching 90% of monthly budget',
-            'timestamp': 'March 5, 2025',
-            'type': 'budget',
-            'icon': 'exclamation-triangle'
-        },
-        {
-            'title': 'Campaign optimization implemented',
-            'description': 'Bid adjustments and keyword optimizations for Search campaigns',
-            'timestamp': 'March 1, 2025',
-            'type': 'optimization',
-            'icon': 'gear'
-        },
-        {
-            'title': 'Performance improvement',
-            'description': 'Conversion rate increased by 15% in the last 7 days',
-            'timestamp': 'February 28, 2025',
-            'type': 'performance',
-            'icon': 'graph-up'
-        },
-        {
-            'title': 'New campaign created',
-            'description': 'Campaign "Spring Promotion 2025" created',
-            'timestamp': 'February 25, 2025',
-            'type': 'campaign',
-            'icon': 'plus'
-        }
-    ]
+    # If there's no daily data, create a placeholder with zeros
+    if not performance_dates:
+        current_date = period_start
+        while current_date <= period_end:
+            date_str = current_date.strftime('%Y-%m-%d')
+            performance_dates.append(date_str)
+            performance_impressions.append(0)
+            performance_clicks.append(0)
+            performance_cost.append(0)
+            performance_conversions.append(0)
+            current_date += timedelta(days=1)
     
     context = {
         'client': client,
         'platform_accounts': platform_accounts,
+        'google_ads_accounts': google_ads_accounts,
         'client_groups': client_groups,
         'client_budgets': client_budgets,
-        'budget_data': budget_data,
-        'budget_utilization': budget_utilization,
-        'total_budget': total_budget,
+        'campaigns': campaigns,
+        'selected_account_id': selected_account_id,
+        'date_range': date_range,
+        'date_range_label': date_range_label,
         
         # Performance metrics
         'impressions': impressions,
@@ -861,25 +740,29 @@ def client_dashboard(request, client_id):
         'performance_cost': json.dumps(performance_cost),
         'performance_conversions': json.dumps(performance_conversions),
         
-        # Device data
-        'device_data': device_data,
-        
-        # Platform distribution
-        'platform_distribution': platform_distribution,
-        'platform_labels': json.dumps(platform_labels),
-        'platform_data': json.dumps(platform_data),
-        'platform_colors': json.dumps(platform_colors),
-        
-        # Top campaigns
-        'top_campaigns': top_campaigns,
-        
-        # Geographic performance
-        'geo_performance': geo_performance,
-        
-        # Recent activity
-        'recent_activity': recent_activity,
-        
         'page_title': f'{client.name} Dashboard'
     }
+
+    # Add default values for charts if they don't exist in context
+    if 'platform_colors' not in context:
+        context['platform_colors'] = json.dumps(['rgba(66, 133, 244, 0.8)', 'rgba(59, 89, 152, 0.8)', 'rgba(0, 119, 181, 0.8)'])
+    if 'platform_border_colors' not in context:
+        context['platform_border_colors'] = json.dumps(['rgba(66, 133, 244, 1)', 'rgba(59, 89, 152, 1)', 'rgba(0, 119, 181, 1)'])
+    if 'platform_labels' not in context:
+        context['platform_labels'] = json.dumps([])
+    if 'platform_data' not in context:
+        context['platform_data'] = json.dumps([])
+    if 'platform_distribution' not in context:
+        context['platform_distribution'] = []
+    if 'geo_performance' not in context:
+        context['geo_performance'] = []
+    if 'device_data' not in context:
+        context['device_data'] = {
+            'mobile': {'percentage': 0, 'clicks': 0, 'ctr': 0, 'conversion_rate': 0, 'cpc': 0, 'cpa': 0},
+            'desktop': {'percentage': 0, 'clicks': 0, 'ctr': 0, 'conversion_rate': 0, 'cpc': 0, 'cpa': 0},
+            'tablet': {'percentage': 0, 'clicks': 0, 'ctr': 0, 'conversion_rate': 0, 'cpc': 0, 'cpa': 0}
+        }
+    if 'recent_activity' not in context:
+        context['recent_activity'] = []
     
     return render(request, 'client_dashboard.html', context)

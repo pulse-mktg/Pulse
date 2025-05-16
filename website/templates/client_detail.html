@@ -3,6 +3,102 @@
 {% load custom_filters %}
 
 {% block content %}
+<style>
+    .manager-account {
+        border: 1px solid #e9ecef;
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+    }
+    
+    .manager-header {
+        cursor: pointer;
+    }
+    
+    .manager-account .account-item {
+        background-color: white;
+    }
+    
+    /* Highlight effect for search matches */
+    .highlight {
+        background-color: #fff3cd;
+    }
+    .manager-account {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.standalone-accounts {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.manager-header, .account-header {
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.manager-header:hover, .account-header:hover {
+    background-color: #f1f3f5;
+}
+
+.toggle-children {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.account-item {
+    border: 1px solid #e9ecef;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+}
+
+.account-item:hover {
+    border-color: #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.account-item strong {
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.account-item .small.text-muted {
+    color: #adb5bd !important;
+    font-size: 0.8rem;
+}
+
+.manager-account .bi-folder, 
+.manager-account .bi-folder-open {
+    color: #ffc107;
+}
+
+.standalone-accounts .bi-diagram-3 {
+    color: #20c997;
+}
+
+/* Make search more noticeable */
+#accountSearchInput {
+    border-width: 2px;
+}
+
+#accountSearchInput:focus {
+    box-shadow: 0 0 0 0.25rem rgba(66, 133, 244, 0.15);
+    border-color: #4285f4;
+}
+</style>
 <div class="row mb-2">
     <div class="col-md-12">
         <nav aria-label="breadcrumb">
@@ -107,9 +203,8 @@
             </div>
         </div>
     </div>
-    
-    <!-- Connected Platforms Section - Enhanced -->
-<!-- Connected Platforms Section - Enhanced -->
+
+<!-- Connected Platforms Section - Redesigned with Account Counts -->
 <div class="col-md-8">
     <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -119,44 +214,67 @@
             </a>
         </div>
         <div class="card-body">
-            {% if has_google_ads_connection or platform_accounts %}
+            {% if tenant_platforms %}
             <div class="row">
-                <!-- Google Ads Platform Card -->
-                {% if has_google_ads_connection %}
-                <div class="col-md-6 mb-3">
-                    <div class="border rounded p-3 h-100">
+                {% for platform in tenant_platforms %}
+                <!-- Platform Card -->
+                <div class="col-md-4 mb-3">
+                    <div class="border rounded p-3 h-100 d-flex flex-column {% if not platform.is_connected %}bg-light{% endif %}">
                         <div class="d-flex align-items-center mb-2">
                             <div class="me-2">
-                                <i class="bi bi-google" style="font-size: 1.5rem;"></i>
+                                <i class="bi {% if platform.slug == 'google-ads' %}bi-google{% elif platform.slug == 'facebook-ads' %}bi-facebook{% elif platform.slug == 'linkedin-ads' %}bi-linkedin{% else %}{{ platform.icon_class }}{% endif %}" style="font-size: 1.5rem;"></i>
                             </div>
                             <div>
-                                <h6 class="mb-0">Google Ads</h6>
-                                <small class="text-muted">
-                                    {% with google_accounts=platform_accounts|filter_by_platform:'google-ads' %}
-                                        {% if google_accounts %}
-                                            {{ google_accounts|length }} account{{ google_accounts|length|pluralize }} connected
-                                        {% else %}
-                                            Not connected to client
-                                        {% endif %}
-                                    {% endwith %}
-                                </small>
+                                <h6 class="mb-0">{{ platform.name }}</h6>
                             </div>
                         </div>
                         
-                        <button class="btn btn-sm btn-primary w-100 manage-platform-btn" 
-                        data-platform-id="{{ google_ads_platform_type.id }}"
-                        data-platform-slug="google-ads"
-                        data-platform-name="Google Ads" 
-                        data-coreui-toggle="modal" 
-                        data-coreui-target="#managePlatformModal">
-                    <i class="bi bi-gear-fill me-1"></i> Manage Accounts
-                </button>
+                        <div class="mb-3">
+                            {% if platform.has_client_accounts %}
+                                {% with platform_accounts=platform_accounts|filter_by_platform:platform.slug %}
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-success me-2">Connected</span>
+                                        <small class="text-muted">{{ platform_accounts|length }} account{{ platform_accounts|length|pluralize }}</small>
+                                    </div>
+                                {% endwith %}
+                            {% elif platform.is_connected %}
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">Available</span>
+                                    <small class="text-muted">No accounts connected</small>
+                                </div>
+                            {% else %}
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-light text-dark me-2">Not Connected</span>
+                                    <small class="text-muted">Connect at tenant level</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-auto">
+                            {% if platform.has_client_accounts %}
+                            <button class="btn btn-sm btn-primary w-100 manage-platform-btn"
+                                    data-platform-id="{{ platform.id }}"
+                                    data-platform-slug="{{ platform.slug }}"
+                                    data-platform-name="{{ platform.name }}"
+                                    data-coreui-toggle="modal"
+                                    data-coreui-target="#managePlatformModal">
+                                <i class="bi bi-gear-fill me-1"></i> Manage Accounts
+                            </button>
+                            {% elif platform.is_connected %}
+                            <button class="btn btn-sm btn-outline-primary w-100 manage-platform-btn" data-platform-id="{{ platform.id }}"
+                                data-platform-slug="{{ platform.slug }}" data-platform-name="{{ platform.name }}" data-coreui-toggle="modal"
+                                data-coreui-target="#managePlatformModal">
+                                <i class="bi bi-plus-circle me-1"></i> Add Accounts
+                            </button>
+                            {% else %}
+                            <a href="{% url 'connect_platform' client.id %}" class="btn btn-sm btn-outline-secondary w-100">
+                                <i class="bi bi-link-45deg me-1"></i> Connect Platform
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                {% endif %}
-                
-                <!-- Other platform cards would go here in the same format -->
-                
+                {% endfor %}
             </div>
             
             <!-- Hidden data elements for JavaScript to use -->
@@ -172,9 +290,9 @@
             {% else %}
             <div class="text-center py-4">
                 <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
-                <p class="mt-3 text-muted">No platform accounts connected yet.</p>
-                <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle me-1"></i> Connect Platform
+                <p class="mt-3 text-muted">No platform connections available.</p>
+                <a href="{% url 'tenant_platforms' %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle me-1"></i> Connect Tenant Platforms
                 </a>
             </div>
             {% endif %}
@@ -368,8 +486,7 @@
 </div>
 
 <!-- Manage Platform Accounts Modal -->
-<!-- Modify the Manage Platform Accounts Modal section in client_detail.html -->
-<div class="modal fade" id="managePlatformModal" tabindex="-1" aria-labelledby="managePlatformModalLabel" aria-hidden="true">
+<div class="modal fade" id="managePlatformModal" tabindex="-1" aria-labelledby="managePlatformModalLabel" aria-hidden="true" data-platform-id="">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -386,9 +503,8 @@
                             <span class="ms-2">Loading accounts...</span>
                         </div>
                     </div>
-                </div>
-                
-                <hr>
+                    
+                    <hr>
                 
                 <!-- Available Accounts Section -->
                 <div>
@@ -616,47 +732,57 @@
 
 <!-- JavaScript for Platform Account Management -->
 <script>
-// JavaScript for Platform Account Management
-document.addEventListener('DOMContentLoaded', function() {
-    // Get modal elements
-    const managePlatformModal = document.getElementById('managePlatformModal');
-    const platformNameElement = document.getElementById('platformName');
-    const connectedAccountsList = document.getElementById('connectedAccountsList');
-    const availableAccountsList = document.getElementById('availableAccountsList');
-    
-    // Handle clicking on manage platform buttons
-    // Handle clicking on manage platform buttons
-    const managePlatformButtons = document.querySelectorAll('.manage-platform-btn');
-    managePlatformButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const platformId = this.getAttribute('data-platform-id');
-            console.log('Platform ID:', platformId); // Debug line to check the ID value
-            const platformName = this.getAttribute('data-platform-name');
-            
-            // Update modal title
-            platformNameElement.textContent = platformName;
-            
-            // Reset lists
-            connectedAccountsList.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                    <span class="ms-2">Loading accounts...</span>
-                </div>
-            `;
-            
-            availableAccountsList.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                    <span class="ms-2">Loading available accounts...</span>
-                </div>
-            `;
-            
-            // Load connected accounts
-            loadConnectedAccounts(this.getAttribute('data-platform-slug'));
-            
-            // Load available accounts
-            loadAvailableAccounts(platformId);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get modal elements
+        const managePlatformModal = document.getElementById('managePlatformModal');
+        const platformNameElement = document.getElementById('platformName');
+        const connectedAccountsList = document.getElementById('connectedAccountsList');
+        const availableAccountsList = document.getElementById('availableAccountsList');
+        
+        // Handle clicking on manage platform buttons
+        const managePlatformButtons = document.querySelectorAll('.manage-platform-btn');
+        managePlatformButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const platformId = this.getAttribute('data-platform-id');
+                const platformName = this.getAttribute('data-platform-name');
+                
+                // Update modal title and store platform ID in modal dataset
+                platformNameElement.textContent = platformName;
+                document.getElementById('managePlatformModal').setAttribute('data-platform-id', platformId);
+                
+                // Reset lists
+                connectedAccountsList.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="ms-2">Loading accounts...</span>
+                    </div>
+                `;
+                
+                availableAccountsList.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="ms-2">Loading available accounts...</span>
+                    </div>
+                `;
+                
+                // Load connected accounts
+                loadConnectedAccounts(this.getAttribute('data-platform-slug'));
+                
+                // Load available accounts
+                loadAvailableAccounts(platformId);
+            });
         });
+        
+        // Check for query parameter to open accounts modal
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('open_accounts_modal')) {
+            // Find the first Google Ads platform button
+            const googleAdsButton = document.querySelector('[data-platform-slug="google-ads"]');
+            if (googleAdsButton) {
+                // Simulate a click on the button to open the modal
+                googleAdsButton.click();
+            }
+        }
     });
     
     // Function to load connected accounts
@@ -672,14 +798,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
+        console.log('Connected accounts:', connectedAccounts);
+        
         if (connectedAccounts.length > 0) {
             connectedAccountsList.innerHTML = `
                 <div class="list-group">
                     ${connectedAccounts.map(account => `
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>${account.name}</strong>
-                                <div class="small text-muted">ID: ${account.clientId}</div>
+                                <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                                <div class="small text-muted">Account ID: ${account.clientId}</div>
                             </div>
                             <div class="btn-group">
                                 <a href="/client/{{ client.id }}/google-ads/${account.id}/" 
@@ -704,132 +832,502 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to load available accounts from API
+    // Store the current platform connection 
+    let selectedConnection = null;
+
+// Function to load available accounts from API with hierarchical display
     function loadAvailableAccounts(platformId) {
-        // Fetch data from the API endpoint we have configured
+        // Fetch available accounts from API
+        console.log(`Fetching accounts for platform ${platformId}...`);
         fetch(`/api/platform/${platformId}/accounts/`)
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('------------- DEBUG: API RESPONSE -------------');
+                console.log('Response data:', JSON.stringify(data));
+                console.log('Account count:', data.accounts?.length);
+                console.log('Has managers:', data.has_managers);
+                
+                // Debug specific account data
                 if (data.accounts && data.accounts.length > 0) {
-                    availableAccountsList.innerHTML = `
-                        <div class="mb-3">
-                            <input type="text" class="form-control" 
-                                   placeholder="Search available accounts..." 
-                                   id="accountSearchInput">
-                        </div>
-                        <div class="list-group">
-                            ${data.accounts.map(account => `
-                                <div class="list-group-item list-group-item-action account-item">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>${account.name}</strong>
-                                            <div class="small text-muted">ID: ${account.id}</div>
-                                        </div>
-                                        <button class="btn btn-sm btn-success"
-                                                onclick="linkAccount('${account.id}', '${account.name}')">
-                                            <i class="bi bi-plus-circle me-1"></i> Add
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                    
-                    // Setup search functionality
-                    setupAccountSearch();
-                } else {
-                    availableAccountsList.innerHTML = `
-                        <div class="alert alert-warning">
-                            No additional accounts available to connect.
-                            <a href="{% url 'tenant_platforms' %}" class="alert-link">
-                                Connect more accounts at tenant level
-                            </a>
-                        </div>
-                    `;
+                    console.log('SAMPLE ACCOUNTS:');
+                    data.accounts.slice(0, 5).forEach((acct, idx) => {
+                        console.log(`Account ${idx+1}:`, 
+                            JSON.stringify({
+                                id: acct.id,
+                                name: acct.name,
+                                is_manager: acct.is_manager,
+                                child_count: acct.child_accounts?.length || 0
+                            })
+                        );
+                    });
                 }
+                
+                // Debug first few accounts to see their structure
+                if (data.accounts && data.accounts.length > 0) {
+                    console.log('Sample account structure:', JSON.stringify(data.accounts[0]));
+                    
+                    // CRITICAL: Process the accounts to make sure all have descriptive names
+                    // This ensures the account name is displayed prominently instead of just the ID
+                    function ensureAccountHasName(account) {
+                        console.log("Processing account for name:", account.id, "current name:", account.name || "MISSING");
+                        
+                        // If name is missing or same as ID, try to create a more descriptive name
+                        if (!account.name || account.name === account.id || account.name.includes(`Account ${account.id}`)) {
+                            // Get a more descriptive name based on the type of account
+                            let descriptiveName;
+                            if (account.is_manager) {
+                                descriptiveName = `Google Ads Manager Account`;
+                            } else {
+                                descriptiveName = `Google Ads Client Account`;
+                            }
+                            
+                            // Add a custom name with the ID to make it unique
+                            const oldName = account.name || "(none)";
+                            account.name = `${descriptiveName} ${account.id}`;
+                            
+                            // Log that we've fixed an account name
+                            console.log(`FIXED: Account ${account.id} - Name changed from "${oldName}" to "${account.name}"`);
+                        }
+                        
+                        // Also process child accounts if they exist
+                        if (account.child_accounts && account.child_accounts.length > 0) {
+                            console.log(`Processing ${account.child_accounts.length} child accounts of ${account.id}`);
+                            account.child_accounts.forEach(child => ensureAccountHasName(child));
+                        }
+                    }
+                    
+                    console.log("-------------- FIXING ACCOUNT NAMES --------------");
+                    // Process all accounts
+                    data.accounts.forEach(account => ensureAccountHasName(account));
+                    
+                    console.log("-------------- ACCOUNTS AFTER NAMING FIX --------------");
+                    data.accounts.forEach((account, idx) => {
+                        console.log(`FINAL Account ${idx+1}: ID=${account.id}, Name="${account.name}", IsManager=${account.is_manager}`);
+                        if (account.child_accounts && account.child_accounts.length > 0) {
+                            console.log(`  Has ${account.child_accounts.length} children`);
+                            account.child_accounts.slice(0, 3).forEach((child, childIdx) => {
+                                console.log(`  Child ${childIdx+1}: ID=${child.id}, Name="${child.name || 'MISSING!!!'}"`);
+                            });
+                        }
+                    });
+                }
+                
+                // Store platform connection information if available
+                if (data.connection) {
+                    selectedConnection = {
+                        platform_account_name: data.connection.platform_account_name || 'Google Ads',
+                        platform_account_email: data.connection.platform_account_email || ''
+                    };
+                }
+                
+                if (data.error) {
+                    availableAccountsList.innerHTML = `
+                        <div class="alert alert-danger">
+                            ${data.error}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!data.accounts || data.accounts.length === 0) {
+                    availableAccountsList.innerHTML = `
+                        <div class="alert alert-info">
+                            No available accounts found for this platform.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add search input at the top
+                availableAccountsList.innerHTML = `
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="accountSearchInput" 
+                               placeholder="Search accounts...">
+                    </div>
+                    <div id="accountsContainer"></div>
+                `;
+                
+                const accountsContainer = document.getElementById('accountsContainer');
+                
+                // Check if we have manager accounts
+                if (data.has_managers) {
+                    // Display hierarchical view with manager accounts and their children
+                    renderHierarchicalAccounts(data.accounts, accountsContainer);
+                } else {
+                    // Display flat list of accounts
+                    renderFlatAccounts(data.accounts, accountsContainer);
+                }
+                
+                // Setup search functionality
+                setupAccountSearch();
             })
             .catch(error => {
-                console.error('Error fetching accounts:', error);
                 availableAccountsList.innerHTML = `
                     <div class="alert alert-danger">
-                        Error loading available accounts. Please try again.
+                        Error loading accounts: ${error.message}
                     </div>
                 `;
             });
     }
     
+    // Function to render hierarchical accounts - grouped by platform connection
+    function renderHierarchicalAccounts(accounts, container) {
+        // Log accounts data for debugging
+        console.log('Rendering accounts:', accounts);
+        
+        // Account Structure:
+        // 1. Group by platform connection first
+        // 2. Then show manager accounts with child accounts
+        // 3. Then show standalone accounts
+        
+        // First, create the platform connection folder
+        const platformConnection = {
+            name: selectedConnection ? selectedConnection.platform_account_name : 'Google Ads Platform',
+            email: selectedConnection ? selectedConnection.platform_account_email : '',
+            children: accounts // All accounts belong to this connection
+        };
+                
+        // Start with platform connection as the top-level folder
+        let html = `
+            <div class="platform-connection mb-4">
+                <div class="connection-header d-flex justify-content-between align-items-center bg-primary text-white p-2 rounded">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-sm btn-light toggle-children me-2" aria-expanded="true">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <i class="bi bi-google me-2"></i>
+                        <strong>${platformConnection.name}</strong>
+                        <span class="badge bg-light text-dark ms-2">
+                            ${platformConnection.email}
+                        </span>
+                    </div>
+                </div>
+                <div class="child-accounts mt-2">
+        `;
+                
+        // Separate manager accounts and standalone accounts
+        const managerAccounts = accounts.filter(a => 
+            a.is_manager || 
+            (a.child_accounts && a.child_accounts.length > 0)
+        );
+        
+        const standaloneAccounts = accounts.filter(a => 
+            !a.is_manager && 
+            (!a.child_accounts || a.child_accounts.length === 0)
+        );
+        
+        console.log('Manager accounts:', managerAccounts.length, 'Standalone accounts:', standaloneAccounts.length);
+        
+        // Add each manager account with its children
+        managerAccounts.forEach(manager => {
+            // Only display manager accounts that have children
+            if (manager.child_accounts && manager.child_accounts.length > 0) {
+                console.log(`Manager ${manager.name} (${manager.id}) has child accounts:`, manager.child_accounts.length);
+                console.log(`First few children:`, manager.child_accounts.slice(0, 3));
+                
+                html += `
+                    <div class="manager-account mb-3 ms-3" data-account-id="${manager.id}">
+                        <div class="manager-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-sm toggle-children me-2" aria-expanded="false">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <i class="bi bi-folder me-2"></i>
+                                <strong>${manager.name}</strong>
+                                <span class="badge bg-secondary ms-2">Manager</span>
+                                <span class="badge bg-info ms-1">${manager.child_accounts.length} accounts</span>
+                            </div>
+                        </div>
+                        <div class="child-accounts ps-4 mt-2" style="display: none;">
+                            ${manager.child_accounts.map(child => {
+                                // DEBUG CHILD ACCOUNT
+                                console.log("RENDERING CHILD ACCOUNT:", child);
+                                
+                                return `
+                                <div class="account-item p-2 mb-2" data-account-id="${child.id}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong style="font-size: 1rem; display: block; color: #0056b3;">${child.name || 'Google Ads Account'}</strong>
+                                            <div class="small text-muted">Account ID: ${child.id}</div>
+                                        </div>
+                                        <button class="btn btn-sm btn-primary" 
+                                                onclick="linkAccount('${child.id}', '${(child.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                                            <i class="bi bi-link-45deg me-1"></i> Link
+                                        </button>
+                                    </div>
+                                </div>
+                            `;}).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Add manager accounts without children to standalone accounts
+                standaloneAccounts.push(manager);
+            }
+        });
+        
+        // Add standalone accounts section if there are any
+        if (standaloneAccounts.length > 0) {
+            html += `
+                <div class="standalone-accounts mb-3 ms-3">
+                    <div class="account-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm toggle-children me-2" aria-expanded="false">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <i class="bi bi-diagram-3 me-2"></i>
+                            <strong>Standalone Accounts</strong>
+                            <span class="badge bg-info ms-1">${standaloneAccounts.length} accounts</span>
+                        </div>
+                    </div>
+                    <div class="child-accounts ps-4 mt-2" style="display: none;">
+                        ${standaloneAccounts.map(account => `
+                            <div class="account-item p-2 mb-2" data-account-id="${account.id}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                                        <div class="small text-muted">Account ID: ${account.id}</div>
+                                        ${account.is_manager ? '<span class="badge bg-secondary ms-1">Manager</span>' : ''}
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" 
+                                            onclick="linkAccount('${account.id}', '${(account.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                                        <i class="bi bi-link-45deg me-1"></i> Link
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Close platform connection div
+        html += `
+                </div>
+            </div>
+        `;
+        
+        // If no accounts found
+        if (managerAccounts.length === 0 && standaloneAccounts.length === 0) {
+            html = `
+                <div class="alert alert-info">
+                    No available accounts found.
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+        // Setup toggle functionality for manager accounts
+        document.querySelectorAll('.toggle-children').forEach(button => {
+            button.addEventListener('click', function() {
+                // Get the parent manager account
+                const parent = this.closest('.manager-account, .standalone-accounts');
+                const childAccounts = parent.querySelector('.child-accounts');
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                
+                
+                // Toggle visibility
+                if (isExpanded) {
+                    childAccounts.style.display = 'none';
+                    this.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                    this.setAttribute('aria-expanded', 'false');
+                    
+                    // If this is a manager account, change folder icon
+                    if (parent.classList.contains('manager-account')) {
+                        parent.querySelector('.manager-header .bi-folder-open')?.classList.replace('bi-folder-open', 'bi-folder');
+                    }
+                } else {
+                    childAccounts.style.display = 'block';
+                    this.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    this.setAttribute('aria-expanded', 'true');
+                    
+                    // If this is a manager account, change folder icon
+                    if (parent.classList.contains('manager-account')) {
+                        parent.querySelector('.manager-header .bi-folder')?.classList.replace('bi-folder', 'bi-folder-open');
+                    }
+                }
+            });
+        });
+    }
+    
+    // Function to render flat list of accounts (no hierarchy)
+    function renderFlatAccounts(accounts, container) {
+        if (accounts.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    No available accounts found.
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="list-group">
+                ${accounts.map(account => `
+                    <div class="list-group-item d-flex justify-content-between align-items-center" data-account-id="${account.id}">
+                        <div>
+                            <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                            <div class="small text-muted">Account ID: ${account.id}</div>
+                        </div>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="linkAccount('${account.id}', '${(account.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                            <i class="bi bi-link-45deg me-1"></i> Link
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
     // Function to setup account search
     function setupAccountSearch() {
         const searchInput = document.getElementById('accountSearchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                const searchTerm = this.value.toLowerCase().trim();
-                const accountItems = document.querySelectorAll('.account-item');
-                
-                accountItems.forEach(item => {
-                    const accountName = item.querySelector('strong').textContent.toLowerCase();
-                    const accountId = item.querySelector('.small.text-muted').textContent.toLowerCase();
+        if (!searchInput) return;
+        
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const allAccounts = document.querySelectorAll('.account-item, .list-group-item[data-account-id]');
+            const allManagers = document.querySelectorAll('.manager-account, .standalone-accounts');
+            
+            // Remove all highlights first
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.classList.remove('highlight');
+            });
+            
+            // Hide all managers first
+            allManagers.forEach(manager => {
+                manager.style.display = 'none';
+                manager.querySelector('.child-accounts').style.display = 'none';
+                manager.querySelector('.toggle-children').innerHTML = '<i class="bi bi-chevron-right"></i>';
+                manager.querySelector('.toggle-children').setAttribute('aria-expanded', 'false');
+            });
+            
+            let matchFound = false;
+            
+            if (searchTerm) {
+                // Search through all accounts
+                allAccounts.forEach(account => {
+                    const accountName = account.querySelector('strong').textContent.toLowerCase();
+                    const accountId = account.getAttribute('data-account-id').toLowerCase();
                     
+                    account.style.display = 'none'; // Hide by default
+                    
+                    // Check if this account matches search
                     if (accountName.includes(searchTerm) || accountId.includes(searchTerm)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
+                        account.style.display = ''; // Show this account
+                        matchFound = true;
+                        
+                        // Show parent manager account if in hierarchy
+                        const parentManager = account.closest('.manager-account, .standalone-accounts');
+                        if (parentManager) {
+                            parentManager.style.display = '';
+                            parentManager.querySelector('.child-accounts').style.display = 'block';
+                            parentManager.querySelector('.toggle-children').innerHTML = '<i class="bi bi-chevron-down"></i>';
+                            parentManager.querySelector('.toggle-children').setAttribute('aria-expanded', 'true');
+                            
+                            // Update folder icon if it's a manager account
+                            if (parentManager.classList.contains('manager-account')) {
+                                parentManager.querySelector('.manager-header .bi-folder')?.classList.replace('bi-folder', 'bi-folder-open');
+                            }
+                        }
+                        
+                        // Highlight matching text
+                        const nameEl = account.querySelector('strong');
+                        const idEl = account.querySelector('.small.text-muted');
+                        
+                        // Highlight name if matches
+                        if (accountName.includes(searchTerm)) {
+                            nameEl.classList.add('highlight');
+                        }
+                        
+                        // Highlight ID if matches
+                        if (accountId.includes(searchTerm)) {
+                            idEl.classList.add('highlight');
+                        }
                     }
                 });
+            } else {
+                // If search is empty, show all manager accounts but keep children collapsed
+                allManagers.forEach(manager => {
+                    manager.style.display = '';
+                });
+                matchFound = true;
+            }
+            
+            // Show message if no matches
+            const noMatchMessage = document.getElementById('noMatchMessage');
+            if (!matchFound) {
+                if (!noMatchMessage) {
+                    const message = document.createElement('div');
+                    message.id = 'noMatchMessage';
+                    message.className = 'alert alert-warning';
+                    message.textContent = 'No accounts match your search.';
+                    document.getElementById('accountsContainer').appendChild(message);
+                }
+            } else {
+                if (noMatchMessage) {
+                    noMatchMessage.remove();
+                }
+            }
+        });
+        
+        // Auto-expand the manager with the most child accounts
+        const managersWithChildren = [...document.querySelectorAll('.manager-account')].filter(manager => {
+            const childCount = manager.querySelectorAll('.account-item').length;
+            return childCount > 0;
+        });
+        
+        console.log(`Found ${managersWithChildren.length} managers with children`);
+        
+        if (managersWithChildren.length > 0) {
+            // Sort by child count in descending order
+            managersWithChildren.sort((a, b) => {
+                const aCount = a.querySelectorAll('.account-item').length;
+                const bCount = b.querySelectorAll('.account-item').length;
+                return bCount - aCount;
             });
+            
+            // Get the manager with the most children
+            const bestManager = managersWithChildren[0];
+            const childCount = bestManager.querySelectorAll('.account-item').length;
+            console.log(`Auto-expanding manager with ${childCount} child accounts`);
+            
+            // Auto expand it
+            const toggleButton = bestManager.querySelector('.toggle-children');
+            const childAccounts = bestManager.querySelector('.child-accounts');
+            
+            childAccounts.style.display = 'block';
+            toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+            toggleButton.setAttribute('aria-expanded', 'true');
+            
+            // Update folder icon
+            const folderIcon = bestManager.querySelector('.manager-header .bi-folder');
+            if (folderIcon) folderIcon.classList.replace('bi-folder', 'bi-folder-open');
         }
     }
-});
-
-// Window-level functions for onclick handlers
-window.linkAccount = function(accountId, accountName) {
-    // Create and submit a form to link this account
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = "{% url 'add_client_google_ads' client.id %}";
     
-    // Add CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'csrfmiddlewaretoken';
-    csrfInput.value = csrfToken;
-    form.appendChild(csrfInput);
-    
-    // Add account ID
-    const accountIdInput = document.createElement('input');
-    accountIdInput.type = 'hidden';
-    accountIdInput.name = 'platform_client_id';
-    accountIdInput.value = accountId;
-    form.appendChild(accountIdInput);
-    
-    // Add account name
-    const accountNameInput = document.createElement('input');
-    accountNameInput.type = 'hidden';
-    accountNameInput.name = 'platform_client_name';
-    accountNameInput.value = accountName;
-    form.appendChild(accountNameInput);
-    
-    // Add connection ID for Google Ads
-    {% if google_ads_connection %}
-    const connectionIdInput = document.createElement('input');
-    connectionIdInput.type = 'hidden';
-    connectionIdInput.name = 'connection_id';
-    connectionIdInput.value = '{{ google_ads_connection.id }}';
-    form.appendChild(connectionIdInput);
-    {% endif %}
-    
-    // Submit the form
-    document.body.appendChild(form);
-    form.submit();
-};
-
-window.removeAccount = function(accountId, accountName) {
-    if (confirm(`Are you sure you want to remove ${accountName} from this client?`)) {
-        // Create and submit a form to remove this account
+    // Window-level functions for onclick handlers for linking accounts
+    window.linkAccount = function(accountId, accountName) {
+        // Get the platform ID from the modal data
+        const platformId = document.getElementById('managePlatformModal').getAttribute('data-platform-id');
+        const clientId = '{{ client.id }}';
+        
+        if (!platformId) {
+            console.error('Platform ID is missing');
+            alert('Error: Unable to determine platform type. Please refresh the page and try again.');
+            return;
+        }
+        
+        // Create and submit a form to link this account
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/client-platform-account/${accountId}/remove/`;
+        form.action = `/client/${clientId}/platform/${platformId}/add-account/${accountId}/`;
         
         // Add CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -839,11 +1337,37 @@ window.removeAccount = function(accountId, accountName) {
         csrfInput.value = csrfToken;
         form.appendChild(csrfInput);
         
+        // Add account name
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.name = 'account_name';
+        nameInput.value = accountName;
+        form.appendChild(nameInput);
+        
         // Submit the form
         document.body.appendChild(form);
         form.submit();
-    }
-};
-
-</script>
+    };
+    
+    window.removeAccount = function(accountId, accountName) {
+        if (confirm(`Are you sure you want to remove ${accountName} from this client?`)) {
+            // Create and submit a form to remove this account
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/client-platform-account/${accountId}/remove/`;
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+    </script>
 {% endblock %}

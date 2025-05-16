@@ -309,33 +309,75 @@ def google_ads_campaign_detail(request, client_id, account_id, campaign_id):
     return render(request, 'google_ads_campaign_detail.html', context)
 
 @login_required
-def sync_google_ads_data(request, client_id, account_id):
+def sync_google_ads_data(request, client_id, account_id=None):
     """
-    View to sync Google Ads data for a specific client account
+    Sync Google Ads data for a specific account or all client accounts
     """
-    # Get the client and account and verify user access
-    client = get_object_or_404(Client, id=client_id, tenant__users=request.user)
-    account = get_object_or_404(ClientPlatformAccount, id=account_id, client=client)
+    # Get the client and verify access
+    client = get_object_or_404(
+        Client.objects.select_related('tenant'),
+        id=client_id, 
+        tenant__users=request.user
+    )
     
-    # Set correct tenant in session
-    request.session['selected_tenant_id'] = client.tenant.id
+    # Get all Google Ads accounts for this client
+    if account_id:
+        accounts = ClientPlatformAccount.objects.filter(
+            id=account_id,
+            client=client,
+            platform_connection__platform_type__slug='google-ads',
+            is_active=True
+        )
+    else:
+        accounts = ClientPlatformAccount.objects.filter(
+            client=client,
+            platform_connection__platform_type__slug='google-ads',
+            is_active=True
+        )
     
-    if request.method == 'POST':
-        try:
-            # Initialize Google Ads data service
-            data_service = GoogleAdsDataService(client.tenant)
-            
-            # Sync data
-            success, message = data_service.sync_client_account_data(account)
-            
-            if success:
-                messages.success(request, f"Google Ads data synced successfully: {message}")
-            else:
-                messages.error(request, f"Error syncing Google Ads data: {message}")
-                
-        except Exception as e:
-            logger.error(f"Error syncing Google Ads data: {str(e)}")
-            messages.error(request, f"Error syncing Google Ads data: {str(e)}")
+    if not accounts.exists():
+        messages.error(request, "No Google Ads accounts found for this client.")
+        return redirect('client_dashboard', client_id=client_id)
     
-    # Redirect back to campaigns view
-    return redirect('google_ads_campaigns', client_id=client_id, account_id=account_id)
+    # Initialize the data service with improved error handling
+    try:
+        from .services.google_ads_data import GoogleAdsDataService
+        data_service = GoogleAdsDataService(client.tenant)
+        
+        # Track sync results
+        success_count = 0
+        failure_count = 0
+        failure_messages = []
+        
+        # Sync each account
+        for account in accounts:
+            try:
+                success, message = data_service.sync_client_account_data(account)
+                if success:
+                    success_count += 1
+                else:
+                    failure_count += 1
+                    failure_messages.append(f"{account.platform_client_name}: {message}")
+            except Exception as e:
+                failure_count += 1
+                failure_messages.append(f"{account.platform_client_name}: Unexpected error: {str(e)}")
+                logger.error(f"Error syncing account {account.id}: {str(e)}")
+                logger.error(traceback.format_exc())
+        
+        # Create user feedback
+        if success_count > 0:
+            messages.success(request, f"Successfully synced data for {success_count} Google Ads account(s).")
+        
+        if failure_count > 0:
+            messages.error(request, f"Failed to sync {failure_count} account(s). Details: {'; '.join(failure_messages)}")
+        
+    except Exception as e:
+        messages.error(request, f"Error initializing data service: {str(e)}")
+        logger.error(f"Error in sync_google_ads_data: {str(e)}")
+        logger.error(traceback.format_exc())
+    
+    # Redirect back to the dashboard with the appropriate filters
+    if account_id:
+        return redirect('client_dashboard', client_id=client_id)
+    else:
+        return redirect('client_dashboard', client_id=client_id)

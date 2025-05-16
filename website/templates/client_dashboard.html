@@ -36,10 +36,6 @@
         color: #6c757d;
     }
 
-    .progress-thin {
-        height: 8px;
-    }
-
     .platform-icon {
         display: flex;
         align-items: center;
@@ -60,14 +56,58 @@
         color: #3b5998;
     }
 
-    .platform-linkedin {
-        background-color: #f8f9fa;
-        color: #0077b5;
+    .date-filter-btn {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
     }
 
-    .platform-twitter {
+    .date-filter-btn.active {
+        background-color: #4263eb;
+        border-color: #4263eb;
+        color: #fff;
+    }
+
+    .date-filter-btn:hover:not(.active) {
         background-color: #f8f9fa;
-        color: #1DA1F2;
+    }
+
+    .campaign-table th, .campaign-table td {
+        vertical-align: middle;
+    }
+
+    .campaign-status {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-enabled {
+        background-color: #28a745;
+    }
+    
+    .status-paused {
+        background-color: #ffc107;
+    }
+    
+    .status-removed {
+        background-color: #dc3545;
+    }
+
+    .account-selector {
+        max-width: 300px;
+    }
+
+    /* Existing CSS continues below */
+    .progress-thin {
+        height: 8px;
     }
 
     .icon-circle {
@@ -213,156 +253,466 @@
                 <a href="{% url 'client_detail' client.id %}" class="btn btn-outline-primary me-2">
                     <i class="bi bi-gear-fill me-1"></i> Client Settings
                 </a>
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
-                        aria-expanded="false">
-                        <i class="bi bi-calendar-event"></i> Last 30 Days
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item active" href="#">Last 30 Days</a></li>
-                        <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
-                        <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
-                        <li><a class="dropdown-item" href="#">This Month</a></li>
-                        <li><a class="dropdown-item" href="#">Last Month</a></li>
-                        <li><a class="dropdown-item" href="#">Custom Range</a></li>
-                    </ul>
-                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Key Performance Metrics -->
+<!-- Filters Section -->
 <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card metric-card">
+    <div class="col-md-12">
+        <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="text-muted small">Impressions</div>
-                        <h3 class="mb-0">{{ impressions|intcomma }}</h3>
+                <div class="row">
+                    <!-- Google Ads Account Selector -->
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="accountSelector" class="form-label">Google Ads Account</label>
+                        <select id="accountSelector" class="form-select account-selector">
+                            <option value="all">All Accounts</option>
+                            {% for account in platform_accounts %}
+                            {% if account.platform_connection.platform_type.slug == 'google-ads' %}
+                            <option value="{{ account.id }}" {% if selected_account_id == account.id %}selected{% endif %}>
+                                {{ account.platform_client_name }} ({{ account.platform_client_id }})
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="icon-circle bg-light text-primary">
-                        <i class="bi bi-eye"></i>
+
+                    <!-- Date Range Filter -->
+                    <div class="col-md-8">
+                        <label class="form-label">Date Range</label>
+                        <div class="d-flex">
+                            <div class="btn-group me-3" role="group">
+                                <button type="button" class="date-filter-btn {% if date_range == '7d' or not date_range %}active{% endif %}" data-range="7d">
+                                    Last 7 Days
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == '30d' %}active{% endif %}" data-range="30d">
+                                    Last 30 Days
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == 'month' %}active{% endif %}" data-range="month">
+                                    This Month
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == 'last_month' %}active{% endif %}" data-range="last_month">
+                                    Last Month
+                                </button>
+                            </div>
+                            
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="customRangeBtn">
+                                <i class="bi bi-calendar3"></i> Custom Range
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="mt-3">
-                    {% if impressions_change > 0 %}
-                    <span class="performance-indicator performance-positive">
-                        <i class="bi bi-arrow-up-short"></i> {{ impressions_change|floatformat:1 }}%
-                    </span>
-                    {% elif impressions_change < 0 %}
-                    <span class="performance-indicator performance-negative">
-                        <i class="bi bi-arrow-down-short"></i> {{ impressions_change|floatformat:1|abs }}%
-                    </span>
-                    {% else %}
-                    <span class="performance-indicator performance-neutral">
-                        <i class="bi bi-dash"></i> 0%
-                    </span>
-                    {% endif %}
-                    <span class="small text-muted ms-2">vs previous period</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card metric-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="text-muted small">Clicks</div>
-                        <h3 class="mb-0">{{ clicks|intcomma }}</h3>
-                    </div>
-                    <div class="icon-circle bg-light text-primary">
-                        <i class="bi bi-cursor"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    {% if clicks_change > 0 %}
-                    <span class="performance-indicator performance-positive">
-                        <i class="bi bi-arrow-up-short"></i> {{ clicks_change|floatformat:1 }}%
-                    </span>
-                    {% elif clicks_change < 0 %}
-                    <span class="performance-indicator performance-negative">
-                        <i class="bi bi-arrow-down-short"></i> {{ clicks_change|floatformat:1|abs }}%
-                    </span>
-                    {% else %}
-                    <span class="performance-indicator performance-neutral">
-                        <i class="bi bi-dash"></i> 0%
-                    </span>
-                    {% endif %}
-                    <span class="small text-muted ms-2">vs previous period</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card metric-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="text-muted small">Cost</div>
-                        <h3 class="mb-0">${{ cost|floatformat:2|intcomma }}</h3>
-                    </div>
-                    <div class="icon-circle bg-light text-primary">
-                        <i class="bi bi-cash-stack"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    {% if cost_change > 0 %}
-                    <span class="performance-indicator performance-positive">
-                        <i class="bi bi-arrow-up-short"></i> {{ cost_change|floatformat:1 }}%
-                    </span>
-                    {% elif cost_change < 0 %}
-                    <span class="performance-indicator performance-negative">
-                        <i class="bi bi-arrow-down-short"></i> {{ cost_change|floatformat:1|abs }}%
-                    </span>
-                    {% else %}
-                    <span class="performance-indicator performance-neutral">
-                        <i class="bi bi-dash"></i> 0%
-                    </span>
-                    {% endif %}
-                    <span class="small text-muted ms-2">vs previous period</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card metric-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="text-muted small">Conversions</div>
-                        <h3 class="mb-0">{{ conversions|floatformat:0|intcomma }}</h3>
-                    </div>
-                    <div class="icon-circle bg-light text-success">
-                        <i class="bi bi-check-circle"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    {% if conversions_change > 0 %}
-                    <span class="performance-indicator performance-positive">
-                        <i class="bi bi-arrow-up-short"></i> {{ conversions_change|floatformat:1 }}%
-                    </span>
-                    {% elif conversions_change < 0 %}
-                    <span class="performance-indicator performance-negative">
-                        <i class="bi bi-arrow-down-short"></i> {{ conversions_change|floatformat:1|abs }}%
-                    </span>
-                    {% else %}
-                    <span class="performance-indicator performance-neutral">
-                        <i class="bi bi-dash"></i> 0%
-                    </span>
-                    {% endif %}
-                    <span class="small text-muted ms-2">vs previous period</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<!-- Google Ads Performance Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-google me-2"></i> Google Ads Performance
+                </h5>
+                {% if selected_account_id %}
+                <button onclick="syncGoogleAdsData({{ client.id }}, {% if selected_account_id %}{{ selected_account_id }}{% else %}0{% endif %})" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-repeat me-1"></i> {% if selected_account_id %}Sync Data{% else %}Sync All Accounts{% endif %}
+                </button>
+{% else %}
+<a href="{% url 'sync_google_ads_client_data' client.id %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-arrow-repeat me-1"></i> Sync All Accounts
+</a>
+{% endif %}
+            </div>
+            <div class="card-body">
+                <!-- Key Performance Metrics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Impressions</div>
+                                        <h3 class="mb-0">{{ impressions|intcomma }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if impressions_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ impressions_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif impressions_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ impressions_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                    <span class="small text-muted ms-2">vs previous period</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Clicks</div>
+                                        <h3 class="mb-0">{{ clicks|intcomma }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-primary">
+                                        <i class="bi bi-cursor"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if clicks_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ clicks_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif clicks_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ clicks_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                    <span class="small text-muted ms-2">vs previous period</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Cost</div>
+                                        <h3 class="mb-0">${{ cost|floatformat:2|intcomma }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-primary">
+                                        <i class="bi bi-cash-stack"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if cost_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ cost_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif cost_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ cost_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                    <span class="small text-muted ms-2">vs previous period</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Conversions</div>
+                                        <h3 class="mb-0">{{ conversions|floatformat:0|intcomma }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-success">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if conversions_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ conversions_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif conversions_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ conversions_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                    <span class="small text-muted ms-2">vs previous period</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Secondary Metrics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">CTR</div>
+                                        <h3 class="mb-0">{{ ctr|floatformat:2 }}%</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-info">
+                                        <i class="bi bi-percent"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if ctr_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ ctr_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif ctr_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ ctr_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Avg CPC</div>
+                                        <h3 class="mb-0">${{ avg_cpc|floatformat:2 }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-warning">
+                                        <i class="bi bi-currency-dollar"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if avg_cpc_change > 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-up-short"></i> {{ avg_cpc_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif avg_cpc_change < 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-down-short"></i> {{ avg_cpc_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Conversion Rate</div>
+                                        <h3 class="mb-0">{{ conversion_rate|floatformat:2 }}%</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-success">
+                                        <i class="bi bi-graph-up"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if conversion_rate_change > 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-up-short"></i> {{ conversion_rate_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif conversion_rate_change < 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-down-short"></i> {{ conversion_rate_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-muted small">Avg CPA</div>
+                                        <h3 class="mb-0">${{ cpa|floatformat:2 }}</h3>
+                                    </div>
+                                    <div class="icon-circle bg-light text-danger">
+                                        <i class="bi bi-tags"></i>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    {% if cpa_change > 0 %}
+                                    <span class="performance-indicator performance-negative">
+                                        <i class="bi bi-arrow-up-short"></i> {{ cpa_change|floatformat:1 }}%
+                                    </span>
+                                    {% elif cpa_change < 0 %}
+                                    <span class="performance-indicator performance-positive">
+                                        <i class="bi bi-arrow-down-short"></i> {{ cpa_change|floatformat:1|abs }}%
+                                    </span>
+                                    {% else %}
+                                    <span class="performance-indicator performance-neutral">
+                                        <i class="bi bi-dash"></i> 0%
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Campaigns Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-none">
+                            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Campaigns</h5>
+                                <div class="d-flex align-items-center">
+                                    <a href="#" class="btn btn-sm btn-outline-primary me-2" title="Export" id="exportCampaignData">
+                                        <i class="bi bi-download me-1"></i> Export
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary" title="Campaign Settings" id="campaignSettingsBtn">
+                                        <i class="bi bi-gear"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover campaign-table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Campaign</th>
+                                            <th>Status</th>
+                                            <th>Type</th>
+                                            <th class="text-end">Impressions</th>
+                                            <th class="text-end">Clicks</th>
+                                            <th class="text-end">CTR</th>
+                                            <th class="text-end">Cost</th>
+                                            <th class="text-end">Conv.</th>
+                                            <th class="text-end">Conv. Rate</th>
+                                            <th class="text-end">CPA</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for campaign in campaigns %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'google_ads_campaign_detail' client.id campaign.client_account.id campaign.id %}">
+                                                    {{ campaign.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if campaign.status == 'ENABLED' %}
+                                                    <span class="campaign-status status-enabled"></span>
+                                                    Enabled
+                                                    {% elif campaign.status == 'PAUSED' %}
+                                                    <span class="campaign-status status-paused"></span>
+                                                    Paused
+                                                    {% else %}
+                                                    <span class="campaign-status status-removed"></span>
+                                                    {{ campaign.status|title }}
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>{{ campaign.campaign_type|default:"Standard" }}</td>
+                                            <td class="text-end">{{ campaign.metrics_data.impressions|intcomma }}</td>
+<td class="text-end">{{ campaign.metrics_data.clicks|intcomma }}</td>
+<td class="text-end">{{ campaign.metrics_data.ctr|floatformat:2 }}%</td>
+<td class="text-end">${{ campaign.metrics_data.cost|floatformat:2|intcomma }}</td>
+<td class="text-end">{{ campaign.metrics_data.conversions|floatformat:0|intcomma }}</td>
+<td class="text-end">{{ campaign.metrics_data.conversion_rate|floatformat:2 }}%</td>
+<td class="text-end">
+    {% if campaign.metrics_data.conversions > 0 %}
+    ${{ campaign.metrics_data.cost|div:campaign.metrics_data.conversions|floatformat:2 }}
+    {% else %}
+    -
+    {% endif %}
+</td>
 
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary" type="button" data-coreui-toggle="dropdown">
+                                                        <i class="bi bi-three-dots-vertical"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{% url 'google_ads_campaign_detail' client.id campaign.client_account.id campaign.id %}">
+                                                                <i class="bi bi-eye me-2"></i> View Details
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="bi bi-gear me-2"></i> Campaign Settings
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="bi bi-graph-up me-2"></i> Set Goals
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="11" class="text-center py-5">
+                                                <div class="py-4">
+                                                    <i class="bi bi-search text-muted" style="font-size: 2rem;"></i>
+                                                    <p class="mt-3">No campaigns found for the selected account.</p>
+                                                    {% if platform_accounts %}
+                                                        {% if selected_account_id %}
+                                                        <button onclick="syncGoogleAdsData({{ client.id }}, {% if selected_account_id %}{{ selected_account_id }}{% else %}0{% endif %})" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-arrow-repeat me-1"></i> {% if selected_account_id %}Sync Data{% else %}Sync All Accounts{% endif %}
+                                                        </button>
+    {% else %}
+    <a href="{% url 'sync_google_ads_client_data' client.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-arrow-repeat me-1"></i> Sync All Accounts
+    </a>
+    {% endif %}
+                                                    {% else %}
+                                                    <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
+                                                        <i class="bi bi-plus-circle me-1"></i> Connect Google Ads
+                                                    </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Overall Performance Trends Chart -->
 <div class="row mb-4">
     <div class="col-md-12">
@@ -378,14 +728,16 @@
             </div>
             <div class="card-body">
                 <div class="position-relative" style="height: 400px;">
-                    <canvas id="overallPerformanceChart"></canvas>
+                    <div class="position-relative" style="height: 400px;">
+                        <canvas id="overallPerformanceChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+<!-- asdfgh -->
 
-<!-- Clients Overview and Platform Performance -->
+<!-- Device Distribution -->
 <div class="row mb-4">
     <div class="col-md-8">
         <div class="card">
@@ -591,7 +943,36 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Overall Performance Chart
+    // Account selector functionality
+    const accountSelector = document.getElementById('accountSelector');
+    if (accountSelector) {
+        accountSelector.addEventListener('change', function() {
+            const accountId = this.value;
+            const url = new URL(window.location.href);
+            
+            if (accountId === 'all') {
+                url.searchParams.delete('account_id');
+            } else {
+                url.searchParams.set('account_id', accountId);
+            }
+            
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Date range buttons functionality
+    const dateFilterBtns = document.querySelectorAll('.date-filter-btn');
+    dateFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const range = this.getAttribute('data-range');
+            const url = new URL(window.location.href);
+            
+            url.searchParams.set('date_range', range);
+            window.location.href = url.toString();
+        });
+    });
+    
+    // Performance Chart
     const performanceCtx = document.getElementById('overallPerformanceChart');
     if (performanceCtx) {
         const performanceChart = new Chart(performanceCtx, {
@@ -685,17 +1066,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Platform Distribution Chart
     const distributionCtx = document.getElementById('platformDistributionChart');
     if (distributionCtx) {
+        // Set default colors
+        const defaultColors = ['rgba(66, 133, 244, 0.8)', 'rgba(59, 89, 152, 0.8)', 'rgba(0, 119, 181, 0.8)', 'rgba(29, 161, 242, 0.8)', 'rgba(108, 117, 125, 0.8)'];
+        const defaultBorders = ['rgba(66, 133, 244, 1)', 'rgba(59, 89, 152, 1)', 'rgba(0, 119, 181, 1)', 'rgba(29, 161, 242, 1)', 'rgba(108, 117, 125, 1)'];
+        
+        // Create chart with safe data or defaults
         const distributionChart = new Chart(distributionCtx, {
             type: 'doughnut',
             data: {
-                labels: {{ platform_labels|safe }},
+                labels: {% if platform_labels %}{{ platform_labels|safe }}{% else %}['No Data']{% endif %},
                 datasets: [{
-                    data: {{ platform_data|safe }},
-                    backgroundColor: {{ platform_colors|safe }},
-                    borderColor: {{ platform_border_colors|default:platform_colors|safe }},
+                    data: {% if platform_data %}{{ platform_data|safe }}{% else %}[1]{% endif %},
+                    backgroundColor: {% if platform_colors %}{{ platform_colors|safe }}{% else %}defaultColors{% endif %},
+                    borderColor: {% if platform_border_colors %}{{ platform_border_colors|safe }}{% else %}defaultBorders{% endif %},
                     borderWidth: 1
                 }]
             },
@@ -716,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         callbacks: {
                             label: function(context) {
                                 return context.label + ': ' + context.parsed.toFixed(2) + ' (' + 
-                                       ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1) + '%)';
+                                    ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1) + '%)';
                             }
                         }
                     }
@@ -765,6 +1150,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Campaign settings button functionality
+    const campaignSettingsBtn = document.getElementById('campaignSettingsBtn');
+    if (campaignSettingsBtn) {
+        campaignSettingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Campaign settings functionality will be implemented in a future update.');
+        });
+    }
+    
+    // Export button functionality
+    const exportBtn = document.getElementById('exportCampaignData');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Export functionality will be implemented in a future update.');
+        });
+    }
+    
+    // Custom date range button functionality
+    const customRangeBtn = document.getElementById('customRangeBtn');
+    if (customRangeBtn) {
+        customRangeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Custom date range selector will be implemented in a future update.');
+        });
+    }
 });
+
+function syncGoogleAdsData(clientId, accountId) {
+    let url;
+    if (accountId && accountId !== 0) {
+        url = `/client/${clientId}/google-ads/${accountId}/sync/`;
+    } else {
+        url = `/client/${clientId}/google-ads/sync/`;
+    }
+    window.location.href = url;
+}
+
 </script>
 {% endblock %}

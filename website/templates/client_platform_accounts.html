@@ -22,11 +22,6 @@
                     <i class="bi bi-link-45deg me-2"></i> {{ client.name }} - Platform Accounts
                 </h5>
                 <div>
-                    {% if has_google_ads_connection %}
-                    <a href="{% url 'add_client_google_ads' client.id %}" class="btn btn-primary">
-                        <i class="bi bi-google me-1"></i> Add Google Ads Account
-                    </a>
-                    {% endif %}
                     <a href="{% url 'connect_platform' client.id %}" class="btn btn-outline-primary ms-2">
                         <i class="bi bi-plus-circle me-1"></i> Connect Platform
                     </a>
@@ -123,15 +118,9 @@
                     <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
                     <p class="mt-3 text-muted">No platform accounts connected yet.</p>
 
-                    {% if has_google_ads_connection %}
-                    <a href="{% url 'add_client_google_ads' client.id %}" class="btn btn-primary mt-3">
-                        <i class="bi bi-google me-1"></i> Add Google Ads Account
-                    </a>
-                    {% else %}
                     <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-3">
                         <i class="bi bi-plus-circle me-1"></i> Connect Platform
                     </a>
-                    {% endif %}
                 </div>
                 {% endif %}
             </div>
