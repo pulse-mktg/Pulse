@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 # load environment variables
 load_dotenv()
 
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+ENVIRONMENT = os.getenv('' \
+'', 'development')
 
 # You could use this to display warnings in templates
 # or modify behavior slightly between environments
@@ -189,11 +190,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GOOGLE_OAUTH_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
 
-# Set the client secret path (only used in development mode)
-GOOGLE_OAUTH_CLIENT_SECRET_PATH = os.path.join(BASE_DIR, os.getenv('GOOGLE_OAUTH_CLIENT_SECRET_PATH', 'secrets/client_secret.json'))
-
-# Only try to read from file if environment variables are not set and we're in development mode
-if (not GOOGLE_OAUTH_CLIENT_ID or not GOOGLE_OAUTH_CLIENT_SECRET) and ENVIRONMENT == 'development':
+# Only try to read from file if environment variables are not set
+if not GOOGLE_OAUTH_CLIENT_ID or not GOOGLE_OAUTH_CLIENT_SECRET:
+    GOOGLE_OAUTH_CLIENT_SECRET_PATH = os.path.join(BASE_DIR, os.getenv('GOOGLE_OAUTH_CLIENT_SECRET_PATH', 'secrets/client_secret.json'))
     try:
         with open(GOOGLE_OAUTH_CLIENT_SECRET_PATH, 'r') as f:
             client_secrets = json.load(f)
