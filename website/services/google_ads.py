@@ -259,16 +259,38 @@ class GoogleAdsService(PlatformService):
         Returns:
             bool: True if successful, False otherwise
         """
+        logger.warning(f"--------- TOKEN REFRESH STARTED ---------")
+        logger.warning(f"Connection ID: {connection.id}")
+        logger.warning(f"Platform Type: {connection.platform_type.name}")
+        logger.warning(f"Account Email: {connection.platform_account_email}")
+        logger.warning(f"Environment: {settings.ENVIRONMENT}")
+        logger.warning(f"Is Token Expired: {connection.is_token_expired()}")
+        
         if not connection.refresh_token:
-            connection.set_connection_error("No refresh token available")
+            error_msg = "No refresh token available"
+            logger.error(f"TOKEN REFRESH ERROR: {error_msg}")
+            connection.set_connection_error(error_msg)
             return False
         
         # Check if required settings are available
         if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
-            connection.set_connection_error("Google OAuth client ID or secret not configured")
+            error_msg = "Google OAuth client ID or secret not configured"
+            logger.error(f"TOKEN REFRESH ERROR: {error_msg}")
+            logger.error(f"GOOGLE_OAUTH_CLIENT_ID present: {bool(settings.GOOGLE_OAUTH_CLIENT_ID)}")
+            logger.error(f"GOOGLE_OAUTH_CLIENT_SECRET present: {bool(settings.GOOGLE_OAUTH_CLIENT_SECRET)}")
+            connection.set_connection_error(error_msg)
             return False
         
         try:
+            # Log token details before refresh
+            logger.warning(f"--------- TOKEN REFRESH DETAILS ---------")
+            logger.warning(f"OAuth Client ID: {settings.GOOGLE_OAUTH_CLIENT_ID[:10]}...{settings.GOOGLE_OAUTH_CLIENT_ID[-5:] if settings.GOOGLE_OAUTH_CLIENT_ID else 'None'}")
+            logger.warning(f"OAuth Client Secret length: {len(settings.GOOGLE_OAUTH_CLIENT_SECRET) if settings.GOOGLE_OAUTH_CLIENT_SECRET else 0} chars")
+            logger.warning(f"Current Access Token: {connection.access_token[:5]}...{connection.access_token[-5:] if connection.access_token else 'None'}")
+            logger.warning(f"Refresh Token (partial): {connection.refresh_token[:5]}...{connection.refresh_token[-5:] if connection.refresh_token else 'None'}")
+            logger.warning(f"Token Expiry: {connection.token_expiry}")
+            logger.warning(f"Scopes: {settings.GOOGLE_OAUTH_SCOPES}")
+            
             # Create credentials from stored tokens with all required fields
             credentials = google.oauth2.credentials.Credentials(
                 token=connection.access_token,
@@ -280,8 +302,29 @@ class GoogleAdsService(PlatformService):
             )
             
             # Force token refresh
+            logger.warning("Initiating token refresh request...")
             request = google.auth.transport.requests.Request()
-            credentials.refresh(request)
+            
+            try:
+                credentials.refresh(request)
+                logger.warning("Token refresh successful!")
+                logger.warning(f"New Access Token: {credentials.token[:5]}...{credentials.token[-5:] if credentials.token else 'None'}")
+                logger.warning(f"New Expiry: {credentials.expiry if hasattr(credentials, 'expiry') else 'None'}")
+            except Exception as refresh_error:
+                logger.error(f"TOKEN REFRESH REQUEST ERROR: {str(refresh_error)}")
+                logger.error(traceback.format_exc())
+                
+                # More detailed error analysis
+                error_str = str(refresh_error)
+                if "invalid_grant" in error_str:
+                    logger.error("ERROR DETAILS: The refresh token is invalid or expired. The user may need to reconnect the account.")
+                elif "invalid_client" in error_str:
+                    logger.error("ERROR DETAILS: Client credentials (ID/secret) are invalid.")
+                elif "unauthorized_client" in error_str:
+                    logger.error("ERROR DETAILS: Client is not authorized to use the refresh token grant type.")
+                
+                connection.set_connection_error(f"Failed to refresh token: {str(refresh_error)}")
+                return False
             
             # Update the connection with new token info
             connection.access_token = credentials.token
@@ -303,6 +346,7 @@ class GoogleAdsService(PlatformService):
             connection.token_metadata = token_metadata
             connection.save()
             
+            logger.warning(f"--------- TOKEN REFRESH COMPLETED SUCCESSFULLY ---------")
             return True
             
         except Exception as e:
@@ -614,33 +658,95 @@ class GoogleAdsService(PlatformService):
                 # Use listAccessibleCustomers API to get all available accounts
                 list_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
                 
-                logger.warning(f"Making API request to: {list_url}")
-                logger.warning(f"Using developer token: {settings.GOOGLE_ADS_DEVELOPER_TOKEN[:5]}...{settings.GOOGLE_ADS_DEVELOPER_TOKEN[-5:] if settings.GOOGLE_ADS_DEVELOPER_TOKEN else 'None'}")
+                # Log complete request details for debugging
+                logger.warning(f"--------- GOOGLE ADS API REQUEST DETAILS ---------")
+                logger.warning(f"Request URL: {list_url}")
+                logger.warning(f"Environment: {settings.ENVIRONMENT}")
+                logger.warning(f"OAuth Client ID: {settings.GOOGLE_OAUTH_CLIENT_ID[:10]}...{settings.GOOGLE_OAUTH_CLIENT_ID[-5:] if settings.GOOGLE_OAUTH_CLIENT_ID else 'None'}")
+                logger.warning(f"OAuth Client Secret: {'PRESENT' if settings.GOOGLE_OAUTH_CLIENT_SECRET else 'MISSING'}")
+                logger.warning(f"Developer Token: {settings.GOOGLE_ADS_DEVELOPER_TOKEN[:5]}...{settings.GOOGLE_ADS_DEVELOPER_TOKEN[-5:] if settings.GOOGLE_ADS_DEVELOPER_TOKEN else 'None'}")
+                logger.warning(f"Access Token: {connection.access_token[:10]}...{connection.access_token[-5:] if connection.access_token else 'None'}")
+                logger.warning(f"Refresh Token Present: {'Yes' if connection.refresh_token else 'No'}")
+                logger.warning(f"Is Token Expired: {connection.is_token_expired()}")
                 
-                response = requests.get(list_url, headers=headers)
+                # Log complete headers
+                safe_headers = headers.copy()
+                if 'Authorization' in safe_headers:
+                    safe_headers['Authorization'] = f"Bearer {connection.access_token[:5]}...{connection.access_token[-5:] if connection.access_token else 'None'}"
+                logger.warning(f"Request Headers: {safe_headers}")
                 
-                logger.warning(f"API response status code: {response.status_code}")
+                try:
+                    response = requests.get(list_url, headers=headers)
+                    
+                    # Log response details
+                    logger.warning(f"--------- GOOGLE ADS API RESPONSE DETAILS ---------")
+                    logger.warning(f"Response Status Code: {response.status_code}")
+                    logger.warning(f"Response Headers: {dict(response.headers)}")
+                    logger.warning(f"Response Content Type: {response.headers.get('Content-Type', 'unknown')}")
+                    
+                    # Log response preview
+                    content_preview = response.text[:500] + ('...' if len(response.text) > 500 else '')
+                    logger.warning(f"Response Content Preview: {content_preview}")
+                except Exception as req_error:
+                    logger.error(f"REQUEST ERROR: {str(req_error)}")
+                    logger.error(traceback.format_exc())
+                    return [{"id": "ERROR", "name": f"API request error: {str(req_error)}"}]
                 
                 # Check if we have a valid JSON response
                 content_type = response.headers.get('Content-Type', '')
                 if 'application/json' not in content_type.lower():
-                    logger.error(f"Invalid content type returned: {content_type}")
-                    logger.error(f"Response preview: {response.text[:200]}...")
-                    return [{"id": "ERROR", "name": "Invalid API response type"}]
+                    error_details = {
+                        "status_code": response.status_code,
+                        "content_type": content_type,
+                        "preview": response.text[:500],
+                    }
+                    logger.error(f"CONTENT TYPE ERROR: Invalid content type returned: {content_type}")
+                    logger.error(f"DETAILED ERROR INFO: {json.dumps(error_details)}")
+                    
+                    # Try to determine more specific error cause
+                    if response.status_code == 401:
+                        return [{"id": "ERROR", "name": "Authentication error (401): Google Ads API authentication failed. Check your OAuth credentials and developer token."}]
+                    elif response.status_code == 403:
+                        return [{"id": "ERROR", "name": "Authorization error (403): Your account doesn't have permission to access the Google Ads API or the developer token is invalid."}]
+                    elif response.status_code == 400:
+                        return [{"id": "ERROR", "name": "Request error (400): The Google Ads API rejected the request. Check logs for details."}]
+                    elif response.status_code >= 500:
+                        return [{"id": "ERROR", "name": f"Server error ({response.status_code}): Google Ads API is experiencing issues. Try again later."}]
+                    else:
+                        return [{"id": "ERROR", "name": f"Invalid API response type ({response.status_code}): Expected JSON but received {content_type}"}]
                 
                 if response.status_code == 200:
                     try:
                         data = response.json()
-                        logger.warning(f"Successfully parsed JSON response")
+                        logger.warning(f"Successfully parsed JSON response with data size: {len(response.text)} bytes")
+                        if 'resourceNames' in data:
+                            logger.warning(f"Found {len(data.get('resourceNames', []))} resource names in response")
+                        else:
+                            logger.warning(f"No resourceNames found in response. Available keys: {list(data.keys())}")
                     except ValueError as e:
-                        logger.error(f"Failed to parse JSON response: {str(e)}")
-                        logger.error(f"Response preview: {response.text[:200]}...")
-                        return [{"id": "ERROR", "name": "Invalid JSON response from Google Ads API"}]
+                        logger.error(f"JSON PARSE ERROR: Failed to parse JSON response: {str(e)}")
+                        logger.error(f"Response preview: {response.text[:500]}...")
+                        return [{"id": "ERROR", "name": "Invalid JSON response from Google Ads API. Check your developer token formatting."}]
+                else:
+                    error_message = f"Unexpected status code: {response.status_code}"
+                    try:
+                        error_data = response.json()
+                        if 'error' in error_data:
+                            error_details = error_data['error']
+                            error_message = f"{error_details.get('code', response.status_code)}: {error_details.get('message', 'Unknown error')}"
+                            logger.error(f"API ERROR DETAILS: {json.dumps(error_details)}")
+                    except Exception:
+                        # If we can't parse JSON, just use the status code
+                        pass
                     
-                    if 'resourceNames' in data and data['resourceNames']:
-                        # Process each account ID
-                        for resource_name in data['resourceNames']:
-                            customer_id = resource_name.split('/')[-1]
+                    logger.error(f"API ERROR: {error_message}")
+                    return [{"id": "ERROR", "name": f"Google Ads API error: {error_message}"}]
+                
+                # Continue processing if we got a successful response
+                if 'resourceNames' in data and data['resourceNames']:
+                    # Process each account ID
+                    for resource_name in data['resourceNames']:
+                        customer_id = resource_name.split('/')[-1]
                             
                             # Format with hyphens for readability
                             if len(customer_id) >= 10:

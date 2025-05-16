@@ -1,16 +1,47 @@
 from pathlib import Path
 import os
 import json
+import logging
 from dotenv import load_dotenv
 
-# load environment variables
+# Configure logging early
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
 load_dotenv()
 
+# Check for critical environment variables
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+# Log environment details
+logger.warning("--------- APPLICATION STARTUP ---------")
+logger.warning(f"ENVIRONMENT: {ENVIRONMENT}")
+logger.warning(f"DJANGO_SETTINGS_MODULE: {os.getenv('DJANGO_SETTINGS_MODULE', 'Not set')}")
+
+# Check Google OAuth variables
+google_oauth_client_id = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+google_oauth_client_secret = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET') 
+google_ads_developer_token = os.getenv('GOOGLE_ADS_DEVELOPER_TOKEN')
+
+logger.warning("Google OAuth Environment Variables:")
+logger.warning(f"GOOGLE_OAUTH_CLIENT_ID present: {bool(google_oauth_client_id)}")
+logger.warning(f"GOOGLE_OAUTH_CLIENT_SECRET present: {bool(google_oauth_client_secret)}")
+logger.warning(f"GOOGLE_ADS_DEVELOPER_TOKEN present: {bool(google_ads_developer_token)}")
+
+# Log warnings for missing variables
+if not google_oauth_client_id:
+    logger.error("MISSING ENVIRONMENT VARIABLE: GOOGLE_OAUTH_CLIENT_ID is not set!")
+if not google_oauth_client_secret:
+    logger.error("MISSING ENVIRONMENT VARIABLE: GOOGLE_OAUTH_CLIENT_SECRET is not set!")
+if not google_ads_developer_token:
+    logger.error("MISSING ENVIRONMENT VARIABLE: GOOGLE_ADS_DEVELOPER_TOKEN is not set!")
 
 # You could use this to display warnings in templates
 # or modify behavior slightly between environments
 IS_DEVELOPMENT = ENVIRONMENT == 'development'
+logger.warning(f"IS_DEVELOPMENT: {IS_DEVELOPMENT}")
+logger.warning("--------- END STARTUP CHECK ---------")
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
