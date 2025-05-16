@@ -579,6 +579,16 @@ class GoogleAdsService(PlatformService):
             logger.warning(f"IS_DEVELOPMENT: {settings.IS_DEVELOPMENT}")
             logger.warning(f"GOOGLE_OAUTH_CLIENT_ID from settings: {settings.GOOGLE_OAUTH_CLIENT_ID is not None}")
             logger.warning(f"GOOGLE_OAUTH_CLIENT_SECRET from settings: {settings.GOOGLE_OAUTH_CLIENT_SECRET is not None}")
+            logger.warning(f"GOOGLE_ADS_DEVELOPER_TOKEN from settings: {settings.GOOGLE_ADS_DEVELOPER_TOKEN is not None}")
+            
+            # Verify required credentials exist
+            if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                logger.error("Missing OAuth credentials in environment variables")
+                return [{"id": "ERROR", "name": "Google OAuth credentials not configured"}]
+                
+            if not settings.GOOGLE_ADS_DEVELOPER_TOKEN:
+                logger.error("Missing Google Ads developer token in environment variables")
+                return [{"id": "ERROR", "name": "Google Ads developer token not configured"}]
             
             # Create credentials
             credentials = google.oauth2.credentials.Credentials(
@@ -604,10 +614,28 @@ class GoogleAdsService(PlatformService):
                 # Use listAccessibleCustomers API to get all available accounts
                 list_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
                 
+                logger.warning(f"Making API request to: {list_url}")
+                logger.warning(f"Using developer token: {settings.GOOGLE_ADS_DEVELOPER_TOKEN[:5]}...{settings.GOOGLE_ADS_DEVELOPER_TOKEN[-5:] if settings.GOOGLE_ADS_DEVELOPER_TOKEN else 'None'}")
+                
                 response = requests.get(list_url, headers=headers)
                 
+                logger.warning(f"API response status code: {response.status_code}")
+                
+                # Check if we have a valid JSON response
+                content_type = response.headers.get('Content-Type', '')
+                if 'application/json' not in content_type.lower():
+                    logger.error(f"Invalid content type returned: {content_type}")
+                    logger.error(f"Response preview: {response.text[:200]}...")
+                    return [{"id": "ERROR", "name": "Invalid API response type"}]
+                
                 if response.status_code == 200:
-                    data = response.json()
+                    try:
+                        data = response.json()
+                        logger.warning(f"Successfully parsed JSON response")
+                    except ValueError as e:
+                        logger.error(f"Failed to parse JSON response: {str(e)}")
+                        logger.error(f"Response preview: {response.text[:200]}...")
+                        return [{"id": "ERROR", "name": "Invalid JSON response from Google Ads API"}]
                     
                     if 'resourceNames' in data and data['resourceNames']:
                         # Process each account ID
