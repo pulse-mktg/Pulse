@@ -56,8 +56,19 @@ class GoogleAdsService(PlatformService):
         Returns:
             tuple: (authorization_url, state)
         """
+        # Log environment information for debugging
+        logger.warning(f"OAuth Flow - Current ENVIRONMENT: {settings.ENVIRONMENT}")
+        logger.warning(f"OAuth Flow - IS_DEVELOPMENT: {settings.IS_DEVELOPMENT}")
+        logger.warning(f"OAuth Flow - GOOGLE_OAUTH_CLIENT_ID exists: {settings.GOOGLE_OAUTH_CLIENT_ID is not None}")
+        logger.warning(f"OAuth Flow - GOOGLE_OAUTH_CLIENT_SECRET exists: {settings.GOOGLE_OAUTH_CLIENT_SECRET is not None}")
+        
         # Check if we're in production environment
         if settings.ENVIRONMENT == 'production':
+            # Verify that environment variables are available
+            if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                logger.error("Production environment detected but OAuth credentials are missing from environment variables")
+                raise ValueError("Google OAuth credentials are not configured in environment variables")
+                
             # Use client credentials from environment variables
             client_config = {
                 "web": {
@@ -73,10 +84,17 @@ class GoogleAdsService(PlatformService):
             )
         else:
             # Use client credentials from file in development
-            flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-                settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
-                scopes=settings.GOOGLE_OAUTH_SCOPES
-            )
+            try:
+                flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+                    settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
+                    scopes=settings.GOOGLE_OAUTH_SCOPES
+                )
+            except FileNotFoundError:
+                logger.error(f"Client secrets file not found at: {settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH}")
+                raise ValueError(f"Google OAuth client secrets file not found. Please check the path: {settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH}")
+            except Exception as e:
+                logger.error(f"Error loading client secrets: {str(e)}")
+                raise
             
         flow.redirect_uri = redirect_uri
         
@@ -105,8 +123,19 @@ class GoogleAdsService(PlatformService):
             PlatformConnection: The created or updated connection
         """
         try:
+            # Log environment information for debugging
+            logger.warning(f"OAuth Callback - Current ENVIRONMENT: {settings.ENVIRONMENT}")
+            logger.warning(f"OAuth Callback - IS_DEVELOPMENT: {settings.IS_DEVELOPMENT}")
+            logger.warning(f"OAuth Callback - GOOGLE_OAUTH_CLIENT_ID exists: {settings.GOOGLE_OAUTH_CLIENT_ID is not None}")
+            logger.warning(f"OAuth Callback - GOOGLE_OAUTH_CLIENT_SECRET exists: {settings.GOOGLE_OAUTH_CLIENT_SECRET is not None}")
+            
             # Check if we're in production environment
             if settings.ENVIRONMENT == 'production':
+                # Verify that environment variables are available
+                if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                    logger.error("Production environment detected but OAuth credentials are missing from environment variables")
+                    raise ValueError("Google OAuth credentials are not configured in environment variables")
+                    
                 # Use client credentials from environment variables
                 client_config = {
                     "web": {
@@ -123,11 +152,18 @@ class GoogleAdsService(PlatformService):
                 )
             else:
                 # Use client credentials from file in development
-                flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-                    settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
-                    scopes=settings.GOOGLE_OAUTH_SCOPES,
-                    state=state
-                )
+                try:
+                    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+                        settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
+                        scopes=settings.GOOGLE_OAUTH_SCOPES,
+                        state=state
+                    )
+                except FileNotFoundError:
+                    logger.error(f"Client secrets file not found at: {settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH}")
+                    raise ValueError(f"Google OAuth client secrets file not found. Please check the path: {settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH}")
+                except Exception as e:
+                    logger.error(f"Error loading client secrets: {str(e)}")
+                    raise
             
             # Set the same redirect URI used in the initial request
             flow.redirect_uri = authorization_response.split('?')[0]
@@ -537,6 +573,12 @@ class GoogleAdsService(PlatformService):
                 success = self.refresh_token(connection)
                 if not success:
                     return [{"id": "ERROR", "name": "OAuth token refresh failed"}]
+            
+            # Log environment information for debugging
+            logger.warning(f"Current ENVIRONMENT: {settings.ENVIRONMENT}")
+            logger.warning(f"IS_DEVELOPMENT: {settings.IS_DEVELOPMENT}")
+            logger.warning(f"GOOGLE_OAUTH_CLIENT_ID from settings: {settings.GOOGLE_OAUTH_CLIENT_ID is not None}")
+            logger.warning(f"GOOGLE_OAUTH_CLIENT_SECRET from settings: {settings.GOOGLE_OAUTH_CLIENT_SECRET is not None}")
             
             # Create credentials
             credentials = google.oauth2.credentials.Credentials(

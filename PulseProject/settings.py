@@ -6,8 +6,7 @@ from dotenv import load_dotenv
 # load environment variables
 load_dotenv()
 
-ENVIRONMENT = os.getenv('' \
-'', 'development')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
 # You could use this to display warnings in templates
 # or modify behavior slightly between environments

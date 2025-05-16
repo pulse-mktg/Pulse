@@ -1,5 +1,26 @@
 # Pulse Development Guidelines
 
+## Environment Configuration
+```bash
+# Required Railway Environment Variables
+ENVIRONMENT=production  # Critical for enabling production mode
+DEBUG=False
+SECRET_KEY=your_secret_key
+
+# Database Configuration
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=railway
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=your_host
+DB_PORT=5432
+
+# Google OAuth Configuration
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+GOOGLE_ADS_DEVELOPER_TOKEN=your_developer_token
+```
+
 ## Development Commands
 ```bash
 # Run development server
