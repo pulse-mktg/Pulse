@@ -15,7 +15,8 @@
       "Bash(git remote add:*)",
       "Bash(git push:*)",
       "Bash(mv:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(mkdir:*)"
     ]
   },
   "enableAllProjectMcpServers": false
