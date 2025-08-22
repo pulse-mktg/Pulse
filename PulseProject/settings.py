@@ -86,8 +86,15 @@ WSGI_APPLICATION = 'PulseProject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.environ.get('DB_NAME', BASE_DIR / 'db.sqlite3'),
+        'USER': os.environ.get('DB_USER', ''),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', ''),
+        'PORT': os.environ.get('DB_PORT', ''),
+        'OPTIONS': {
+            'sslmode': 'require',
+        } if os.environ.get('DB_HOST') else {},
     }
 }
 
@@ -142,3 +149,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# Security settings from environment variables
+if os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() == 'true':
+    SECURE_SSL_REDIRECT = True
+    
+if os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true':
+    SESSION_COOKIE_SECURE = True
+    
+if os.environ.get('CSRF_COOKIE_SECURE', 'False').lower() == 'true':
+    CSRF_COOKIE_SECURE = True
