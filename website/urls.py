@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/client/<int:client_id>/budget/set/', views.set_client_budget, name='set_client_budget'),
 
     path('login/', views.login_user, name='login'),
+    path('accounts/login/', views.login_user, name='accounts_login'),  # Fallback for Django's default LOGIN_URL
     path('logout/', views.logout_user, name='logout'),
     path('register/', views.register_user, name='register'),
     
