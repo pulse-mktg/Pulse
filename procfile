@@ -1,1 +1,1 @@
-web: python manage.py migrate && python manage.py create_admin && python manage.py collectstatic --noinput && gunicorn PulseProject.wsgi
+web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn PulseProject.wsgi
