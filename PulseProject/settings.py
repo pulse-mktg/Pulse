@@ -180,8 +180,7 @@ IS_DEVELOPMENT = ENVIRONMENT == 'development'
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
 GOOGLE_OAUTH_SCOPES = [
-    'https://www.googleapis.com/auth/adwords',
-    'https://www.googleapis.com/auth/adwords.readonly'
+    'https://www.googleapis.com/auth/adwords'
 ]
 
 # Google Ads settings
