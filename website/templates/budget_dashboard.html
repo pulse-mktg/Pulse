@@ -1,0 +1,213 @@
+<!-- budget_dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Budgets</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <h1 class="page-title mb-0">Budget Dashboard</h1>
+                {% if client_filter %}
+                <div class="mt-2">
+                    <span class="badge bg-info">
+                        <i class="bi bi-funnel me-1"></i>Filtered by: {{ client_filter.name }}
+                    </span>
+                    <a href="{% url 'budget_dashboard' %}" class="btn btn-link btn-sm text-decoration-none ms-2">
+                        <i class="bi bi-x-circle me-1"></i>Clear Filter
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <a href="{% url 'create_budget' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Create Budget
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Overview Cards -->
+<div class="row mb-4">
+    <!-- Active Budgets -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-primary text-white">
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-primary">Active Budgets</div>
+                    <div class="fs-4 fw-semibold">
+                        {{ active_budgets.count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- On Track Budgets -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-success text-white">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-success">On Track</div>
+                    <div class="fs-4 fw-semibold">
+                        {{ on_track_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Budgets -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-warning text-white">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-warning">Needs Attention</div>
+                    <div class="fs-4 fw-semibold">
+                        {{ needs_attention_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Budgets Table -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-currency-dollar me-2"></i> Active Budgets
+        </h5>
+        <div class="input-group" style="max-width: 300px;">
+            <input type="text" id="budgetSearchInput" class="form-control" placeholder="Search budgets...">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if active_budgets %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Budget Name</th>
+                        <th>Entity</th>
+                        <th>Period</th>
+                        <th>Total</th>
+                        <th>Spent</th>
+                        <th>Expected</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for budget in active_budgets %}
+                    <tr class="budget-row">
+                        <td>
+                            <a href="{% url 'budget_detail' budget.id %}" class="fw-bold text-decoration-none">
+                                {{ budget.name }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if budget.client %}
+                            <span class="badge bg-primary">Client</span> {{ budget.client.name }}
+                            {% elif budget.client_group %}
+                            <span class="badge bg-info">Group</span> {{ budget.client_group.name }}
+                            {% else %}
+                            <span class="badge bg-secondary">Tenant-wide</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ budget.start_date|date:"M d, Y" }} - {{ budget.end_date|date:"M d, Y" }}
+                            <div class="small text-muted">{{ budget.get_frequency_display }}</div>
+                        </td>
+                        <td class="fw-bold">${{ budget.amount|floatformat:2 }}</td>
+                        <td>${{ budget.current_spend|floatformat:2 }} ({{ budget.spend_percentage|floatformat:1 }}%)
+                        </td>
+                        <td>${{ budget.expected_spend|floatformat:2 }} ({{ budget.expected_percentage|floatformat:1 }}%)
+                        </td>
+                        <td>
+                            {% if budget.status == 'on-track' %}
+                            <span class="badge bg-success">On Track</span>
+                            {% elif budget.status == 'underspend' %}
+                            <span class="badge bg-warning">Underspending</span>
+                            {% elif budget.status == 'overspend' %}
+                            <span class="badge bg-danger">Overspending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'budget_detail' budget.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'edit_budget' budget.id %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-currency-dollar" style="font-size: 3rem; color: #8a93a2;"></i>
+            <p class="mt-3 text-muted">No active budgets found.</p>
+            <a href="{% url 'create_budget' %}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle me-1"></i> Create Your First Budget
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- JS for search functionality -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('budgetSearchInput');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const searchTerm = this.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('.budget-row');
+
+                rows.forEach(row => {
+                    const name = row.querySelector('td:first-child').textContent.toLowerCase();
+                    const entity = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+
+                    if (name.includes(searchTerm) || entity.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,311 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Pulse{% endblock %}</title>
+
+  <!-- CoreUI CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@coreui/coreui@4.2.6/dist/css/coreui.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{% static 'website/css/pulse-layout.css' %}">
+  <link rel="stylesheet" href="{% static 'website/css/pulse-components.css' %}">
+  <link rel="stylesheet" href="{% static 'website/css/pulse-tables.css' %}">
+  <link rel="stylesheet" href="{% static 'website/css/pulse-utilities.css' %}">
+  <link rel="stylesheet" href="{% static 'website/css/client-dropdown.css' %}">
+
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+  <div class="sidebar sidebar-dark sidebar-fixed" id="sidebar">
+    <div class="sidebar-brand d-flex">
+      <a href="{% url 'home' %}" class="d-flex align-items-center text-decoration-none text-white">
+        <span class="sidebar-brand-icon me-2"><i class="bi bi-activity"></i></span>
+        <span>Pulse</span>
+      </a>
+    </div>
+    <ul class="sidebar-nav" data-coreui="navigation">
+      {% if user.is_authenticated %}
+
+      {% if all_user_tenants.count > 0 %}
+      <!-- Current Tenant with Dropdown -->
+      <li class="nav-item nav-group {% if all_user_tenants.count > 1 %}{% else %}d-none{% endif %}">
+        <a class="sidebar-nav-link nav-group-toggle" href="#">
+          <i class="sidebar-nav-icon bi bi-building"></i>
+          <span class="sidebar-nav-link-text">
+            {{ selected_tenant.name }}
+          </span>
+        </a>
+        {% if all_user_tenants.count > 1 %}
+        <ul class="nav-group-items">
+          {% for t in all_user_tenants %}
+          {% if t.id != selected_tenant.id %}
+          <li class="nav-item">
+            <a class="sidebar-nav-link" href="{% url 'switch_tenant' t.id %}">
+              <span class="sidebar-nav-icon"></span>
+              <span class="sidebar-nav-link-text">{{ t.name }}</span>
+            </a>
+          </li>
+          {% endif %}
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </li>
+      {% endif %}
+
+      <!-- Clients Dropdown -->
+      {% if all_user_tenants.count > 0 and selected_tenant %}
+      <!-- Client Dropdown Component -->
+      <li class="nav-item nav-group">
+        <a class="sidebar-nav-link nav-group-toggle" href="#">
+          <i class="sidebar-nav-icon bi bi-people"></i>
+          <span class="sidebar-nav-link-text">Clients</span>
+          {% if all_clients %}
+          <span class="badge bg-primary ms-auto">{{ all_clients|length }}</span>
+          {% endif %}
+        </a>
+        <ul class="nav-group-items" style="max-height: 400px; overflow-y: auto;">
+          <!-- Search input for clients -->
+          <li class="nav-item p-2">
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control" id="clientSearchInput" placeholder="Search clients...">
+              <span class="input-group-text">
+                <i class="bi bi-search"></i>
+              </span>
+            </div>
+          </li>
+
+          {% for client in all_clients %}
+          <li class="nav-item client-item">
+            <a class="sidebar-nav-link" href="{% url 'client_dashboard' client.id %}">
+              <span class="sidebar-nav-icon">
+                {% if client.logo and client.logo.name %}
+                <img src="{{ client.logo.url }}" alt="{{ client.name }}" class="img-fluid rounded"
+                  style="width: 20px; height: 20px;">
+                {% else %}
+                <i class="bi bi-person" style="font-size: 0.8rem;"></i>
+                {% endif %}
+              </span>
+              <span class="sidebar-nav-link-text text-truncate" style="max-width: 150px;" title="{{ client.name }}">{{ client.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+
+          <!-- Add client button -->
+          <li class="nav-item mt-2">
+            <a class="sidebar-nav-link d-flex justify-content-center" href="{% url 'create_client' %}">
+              <span class="badge bg-success">
+                <i class="bi bi-plus-circle me-1"></i> Add Client
+              </span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+      {% if selected_tenant %}
+      <!-- Dashboard -->
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="{% url 'agency_dashboard' %}">
+          <i class="sidebar-nav-icon bi bi-speedometer2"></i>
+          <span class="sidebar-nav-link-text">Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="{% url 'client_groups' %}">
+          <i class="sidebar-nav-icon bi bi-collection"></i>
+          <span class="sidebar-nav-link-text">Groups</span>
+        </a>
+      </li>
+
+      <!-- Add this to the sidebar in base.html -->
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="{% url 'budget_dashboard' %}">
+          <i class="sidebar-nav-icon bi bi-cash-stack"></i>
+          <span class="sidebar-nav-link-text">Budgets</span>
+        </a>
+      </li>
+      <!-- Platform Connections -->
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="{% url 'tenant_platforms' %}">
+          <i class="sidebar-nav-icon bi bi-link-45deg"></i>
+          <span class="sidebar-nav-link-text">Platform Connections</span>
+        </a>
+      </li>
+
+      <!-- Reports (placeholder for future feature) -->
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="#">
+          <i class="sidebar-nav-icon bi bi-graph-up"></i>
+          <span class="sidebar-nav-link-text">Reports</span>
+          <span class="badge bg-info ms-auto">Coming Soon</span>
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+
+      {% if user.is_staff %}
+      <!-- Admin Settings Section -->
+      <li class="nav-item nav-title">Admin Settings</li>
+
+      <!-- Tenant Management -->
+      <li class="nav-item">
+        <a class="sidebar-nav-link" href="{% url 'create_tenant' %}">
+          <i class="sidebar-nav-icon bi bi-plus-circle"></i>
+          <span class="sidebar-nav-link-text">Create Tenant</span>
+        </a>
+      </li>
+      {% endif %}
+
+      <!-- Spacer -->
+      <li class="nav-item flex-grow-1"></li>
+
+      <!-- User Profile and Settings -->
+      <li class="nav-item nav-title">Account</li>
+      <li class="nav-item nav-group">
+        <a class="sidebar-nav-link nav-group-toggle" href="#">
+          <i class="sidebar-nav-icon bi bi-person-circle"></i>
+          <span class="sidebar-nav-link-text">{{ user.username }}</span>
+        </a>
+        <ul class="nav-group-items">
+          <li class="nav-item">
+            <a class="sidebar-nav-link" href="#">
+              <i class="sidebar-nav-icon bi bi-person"></i>
+              <span class="sidebar-nav-link-text">Profile</span>
+            </a>
+          </li>
+          {% if user.is_staff %}
+          <li class="nav-item">
+            <a class="sidebar-nav-link" href="#">
+              <i class="sidebar-nav-icon bi bi-gear"></i>
+              <span class="sidebar-nav-link-text">Account Settings</span>
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="sidebar-nav-link" href="{% url 'logout' %}">
+              <i class="sidebar-nav-icon bi bi-box-arrow-right"></i>
+              <span class="sidebar-nav-link-text">Logout</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+      {% endif %}
+    </ul>
+  </div>
+
+  <div class="wrapper d-flex flex-column min-vh-100">
+    <!-- Top Navigation -->
+    <header class="header header-sticky mb-4">
+      <div class="container-fluid">
+        <button class="header-toggler px-md-0 me-md-3" type="button"
+          onclick="coreui.Sidebar.getInstance(document.querySelector('#sidebar')).toggle()">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <ul class="header-nav ms-auto">
+          {% if not user.is_authenticated %}
+          <li class="nav-item">
+            <a class="btn btn-outline-primary" href="{% url 'login' %}">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Login
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </header>
+
+    <main class="body flex-grow-1 px-3 py-2">
+      <div class="container-fluid">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show"
+          role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="ms-auto">
+        © {% now "Y" %} Pulse
+      </div>
+    </footer>
+  </div>
+
+  <!-- Popper.js and CoreUI JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@coreui/coreui@4.2.6/dist/js/coreui.min.js"></script>
+
+  <!-- Custom JavaScript -->
+  <script src="{% static 'website/js/sidebar.js' %}"></script>
+
+
+  {% block extra_js %}{% endblock %}
+  <!-- Add this to your base.html right before the closing </body> tag -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Initialize dismissible alerts
+      document.querySelectorAll('.alert .btn-close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function () {
+          const alert = this.closest('.alert');
+          alert.classList.remove('show');
+          setTimeout(() => {
+            alert.remove();
+          }, 150);
+        });
+      });
+    });
+  </script>
+  <!-- Client Dropdown Search Functionality -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const searchInput = document.getElementById('clientSearchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          const searchTerm = this.value.toLowerCase().trim();
+          const clientItems = document.querySelectorAll('.client-item');
+
+          clientItems.forEach(item => {
+            const clientName = item.querySelector('.sidebar-nav-link-text').textContent.toLowerCase();
+            if (clientName.includes(searchTerm)) {
+              item.style.display = '';
+            } else {
+              item.style.display = 'none';
+            }
+          });
+        });
+
+        // Clear search when dropdown closes
+        document.querySelectorAll('.nav-group-toggle').forEach(toggle => {
+          toggle.addEventListener('click', function () {
+            // Check if this toggle is closing the dropdown
+            setTimeout(() => {
+              const isExpanded = this.parentElement.classList.contains('show');
+              if (!isExpanded) {
+                searchInput.value = '';
+                document.querySelectorAll('.client-item').forEach(item => {
+                  item.style.display = '';
+                });
+              }
+            }, 300);
+          });
+        });
+      }
+    });
+  </script>
+</body>
+
+</html>

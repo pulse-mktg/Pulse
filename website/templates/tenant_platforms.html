@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Enhanced scroll padding */
+    html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 100px; /* Increase from the 90px in utilities.css */
+    }
+    
+    /* Ensure the available-platforms section has padding/margin for visibility */
+    #available-platforms {
+        scroll-margin-top: 100px;
+        padding-top: 15px;
+    }
+    
+    /* Add a visible separator before the section */
+    #available-platforms::before {
+        content: '';
+        display: block;
+        height: 1px;
+        background-color: #e9ecef;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Platform Connections</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if tenant.logo and tenant.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ tenant.logo.url }}" alt="{{ tenant.name }} logo" class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded" style="width: 50px; height: 50px;">
+                    <i class="bi bi-building" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">Platform Connections</h1>
+            </div>
+            <!-- Replace the original button with this implementation -->
+            <a href="#available-platforms" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Connect Additional Platforms
+            </a>          
+        </div>
+    </div>
+</div>
+
+<!-- Connected Platforms Section -->
+{% for platform_item in platform_data %}
+    {% if platform_item.is_connected %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi {{ platform_item.platform_type.icon_class }} me-2"></i> {{ platform_item.platform_type.name }}
+                    </h5>
+                    <a href="{% url 'connect_platform_to_tenant' platform_item.platform_type.id %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Connect Another Account
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p>{{ platform_item.platform_type.description }}</p>
+                    
+                    {% if platform_item.platform_type.slug == 'google-ads' and google_ads_connections %}
+                    <!-- Google Ads specific table -->
+                    <div class="table-responsive mt-3">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Account</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Connected By</th>
+                                    <th>Connected On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for connection in google_ads_connections %}
+                                <tr>
+                                    <td>{{ connection.platform_account_name }}</td>
+                                    <td>{{ connection.platform_account_email }}</td>
+                                    <td>
+                                        <span class="badge {% if connection.connection_status == 'active' %}bg-success{% elif connection.connection_status == 'expired' %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ connection.get_connection_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ connection.connected_user.get_full_name|default:connection.connected_user.username }}</td>
+                                    <td>{{ connection.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'manage_tenant_platform_connection' connection.id %}" class="btn btn-sm btn-outline-primary">
+                                            Manage
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Generic connection info -->
+                    <div class="alert alert-success mt-3">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <strong>Connected:</strong> {{ platform_item.account_name }}
+                                <div class="small mt-1">
+                                    {% if platform_item.last_synced %}
+                                    Last synced: {{ platform_item.last_synced|date:"M d, Y H:i" }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <a href="{% url 'manage_tenant_platform_connection' platform_item.connection.id %}" class="btn btn-sm btn-outline-primary ms-auto">
+                                Manage Connection
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<!-- In tenant_platforms.html, replace the Client Platform Associations section -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2"></i> Client Platform Associations
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Associate your connected platform accounts with specific clients to organize your data.</p>
+                
+                {% if client_platform_accounts %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Platform</th>
+                                <th>Account</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in client_platform_accounts %}
+                            <tr>
+                                <td>{{ account.client.name }}</td>
+                                <td>
+                                    <i class="bi {{ account.platform_connection.platform_type.icon_class }} me-2"></i>
+                                    {{ account.platform_connection.platform_type.name }}
+                                </td>
+                                <td>{{ account.platform_client_name }}</td>
+                                <td>
+                                    <span class="badge {% if account.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if account.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'client_detail' account.client.id %}" class="btn btn-sm btn-outline-primary">
+                                        View Client
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-link-45deg" style="font-size: 2rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No client-platform associations yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Platform Activity Section -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-activity me-2"></i> Platform Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Activity timeline will be shown here once implemented -->
+                <div class="text-center py-4">
+                    <i class="bi bi-clock-history" style="font-size: 2rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">Platform activity will be shown here once connections are established.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Available Platforms Section -->
+<div id="available-platforms" class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-link-45deg me-2"></i> Available Platforms
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">Connect {{ tenant.name }} to these additional advertising platforms:</p>
+
+                <div class="row mt-4">
+                    {% if unconnected_platforms %}
+                        {% for platform in unconnected_platforms %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <div class="platform-icon mb-3">
+                                        <i class="bi {{ platform.icon_class }}" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <h5>{{ platform.name }}</h5>
+                                    <p class="text-muted small">{{ platform.description }}</p>
+                                    
+                                    <div class="mt-4">
+                                        <a href="{% url 'connect_platform_to_tenant' platform.id %}" class="btn btn-primary">
+                                            Connect
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-12 text-center">
+                            <p class="text-muted">All available platforms have been connected. Well done!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Add this script in the extra_js block -->
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Platform connections page loaded');
+      
+      // Direct DOM manipulation approach
+      const scrollButton = document.getElementById('scrollToAvailablePlatforms');
+      const targetSection = document.getElementById('available-platforms');
+      
+      if (scrollButton && targetSection) {
+          scrollButton.addEventListener('click', function() {
+              console.log('Button clicked, using hard scroll to available platforms');
+              
+              // Add a temporary high visibility marker before the section
+              const marker = document.createElement('div');
+              marker.id = 'scroll-marker';
+              marker.style.height = '200px';  // Create space to scroll to
+              marker.style.width = '100%';
+              marker.style.position = 'relative';
+              
+              // Insert the marker before the target section
+              targetSection.parentNode.insertBefore(marker, targetSection);
+              
+              // Focus on the marker which will scroll it into view
+              setTimeout(function() {
+                  marker.tabIndex = -1;
+                  marker.focus();
+                  
+                  // Remove the marker after scrolling
+                  setTimeout(function() {
+                      marker.remove();
+                  }, 1000);
+              }, 100);
+          });
+      }
+    });
+</script>
+{% endblock %}

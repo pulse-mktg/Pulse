@@ -1,0 +1,80 @@
+/**
+ * pulse-tables.css
+ * Table styles and related elements
+ */
+
+/* Table styles */
+.table-responsive {
+    overflow-x: auto;
+}
+  
+/* Clickable rows */
+tr[data-href] {
+    cursor: pointer;
+}
+  
+tr[data-href]:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+  
+/* Bulk action toolbars */
+#bulk-actions-toolbar,
+[id^="client-bulk-actions-"] {
+    display: none;
+    position: sticky;
+    bottom: 0;
+    padding: 15px;
+    background-color: #fff !important;
+    border-top: 1px solid #ddd !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    margin: 15px -15px -15px -15px;
+    z-index: 100;
+    border-radius: 0 0 0.25rem 0.25rem;
+}
+
+/* Customizable table columns */
+th.column-toggle {
+    cursor: pointer;
+    position: relative;
+}
+
+th.column-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+th.column-toggle:after {
+    content: "\F477";
+    font-family: "bootstrap-icons";
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+th.column-toggle:hover:after {
+    opacity: 0.5;
+}
+
+/* Column settings button styling */
+#columnSettingsBtn {
+    display: flex;
+    align-items: center;
+}
+
+/* Column settings modal styling */
+.form-check-input.column-checkbox:checked {
+    background-color: #3399ff;
+    border-color: #3399ff;
+}
+
+/* Make sure metrics are right-aligned in tables */
+td.column-data {
+    text-align: right;
+}
+
+/* Header cells for metric columns */
+th.column-toggle {
+    text-align: right;
+}

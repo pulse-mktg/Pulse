@@ -1,0 +1,44 @@
+/**
+ * pulse-utilities.css
+ * Utility classes for typography, spacing, etc.
+ */
+
+/* Typography */
+
+html {
+  scroll-padding-top: 90px; /* Adjust value based on your header height */
+}
+
+
+.page-title {
+    font-size: 1.625rem;
+    font-weight: 500;
+    color: rgba(44, 56, 74, 0.95);
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Breadcrumb */
+  .breadcrumb {
+    background-color: transparent;
+    padding: 0;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Sidebar Variables */
+  .sidebar {
+    --cui-sidebar-bg: #3c4b64;
+    --cui-sidebar-color: rgba(255, 255, 255, 0.87);
+    --cui-sidebar-brand-color: rgba(255, 255, 255, 0.87);
+    --cui-sidebar-nav-link-color: rgba(255, 255, 255, 0.6);
+    --cui-sidebar-nav-link-hover-color: rgba(255, 255, 255, 0.87);
+    --cui-sidebar-nav-link-hover-bg: rgba(255, 255, 255, 0.05);
+    --cui-sidebar-nav-link-active-color: rgba(255, 255, 255, 0.87);
+    --cui-sidebar-nav-link-active-bg: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Header Styles */
+  .header .header-brand {
+    color: rgba(44, 56, 74, 0.681);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }

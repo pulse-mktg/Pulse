@@ -1,0 +1,380 @@
+<!-- create_budget.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'budget_dashboard' %}">Budgets</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Create Budget</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Create New Budget</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="budgetForm">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_name" class="form-label">Budget Name <span class="text-danger">*</span></label>
+                                {{ form.name.errors }}
+                                <input type="text" name="name" id="id_name" value="{{ form.name.value|default:'' }}" class="form-control {% if form.name.errors %}is-invalid{% endif %}" required>
+                                <div class="form-text">A descriptive name for this budget</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_amount" class="form-label">Budget Amount <span class="text-danger">*</span></label>
+                                {{ form.amount.errors }}
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="amount" id="id_amount" value="{{ form.amount.value|default:'' }}" step="0.01" min="0" class="form-control {% if form.amount.errors %}is-invalid{% endif %}" required>
+                                </div>
+                                <div class="form-text">Total budget amount for the period</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Budget Duration <span class="text-danger">*</span></label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="id_start_date" class="form-label form-text">Start Date</label>
+                                        {{ form.start_date.errors }}
+                                        <input type="date" name="start_date" id="id_start_date" value="{{ form.start_date.value|date:'Y-m-d'|default:'' }}" class="form-control {% if form.start_date.errors %}is-invalid{% endif %}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_end_date" class="form-label form-text">End Date</label>
+                                        {{ form.end_date.errors }}
+                                        <input type="date" name="end_date" id="id_end_date" value="{{ form.end_date.value|date:'Y-m-d'|default:'' }}" class="form-control {% if form.end_date.errors %}is-invalid{% endif %}" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_frequency" class="form-label">Budget Frequency</label>
+                                {{ form.frequency.errors }}
+                                <select name="frequency" id="id_frequency" class="form-select {% if form.frequency.errors %}is-invalid{% endif %}">
+                                    {% for value, label in form.fields.frequency.choices %}
+                                    <option value="{{ value }}" {% if form.frequency.value == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">How frequently this budget repeats</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Budget For <span class="text-danger">*</span></label>
+                                {{ form.entity_type.errors }}
+                                <div class="list-group">
+                                    {% for value, label in form.fields.entity_type.choices %}
+                                    <label class="list-group-item d-flex gap-2 cursor-pointer">
+                                        <input type="radio" name="entity_type" value="{{ value }}" class="form-check-input flex-shrink-0" 
+                                               {% if form.entity_type.value == value %}checked{% elif not form.entity_type.value and value == 'client' %}checked{% endif %}>
+                                        <span>{{ label }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div id="clientSelection" class="mb-3 {% if form.entity_type.value == 'group' or form.entity_type.value == 'tenant' %}d-none{% endif %}">
+                                <label for="id_client" class="form-label">Client <span class="text-danger">*</span></label>
+                                {{ form.client.errors }}
+                                <select name="client" id="id_client" class="form-select {% if form.client.errors %}is-invalid{% endif %}">
+                                    <option value="">-- Select Client --</option>
+                                    {% for client in form.fields.client.queryset %}
+                                    <option value="{{ client.id }}" {% if form.client.value == client.id|stringformat:"s" %}selected{% endif %}>{{ client.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div id="groupSelection" class="mb-3 {% if form.entity_type.value != 'group' %}d-none{% endif %}">
+                                <label for="id_client_group" class="form-label">Client Group <span class="text-danger">*</span></label>
+                                {{ form.client_group.errors }}
+                                <select name="client_group" id="id_client_group" class="form-select {% if form.client_group.errors %}is-invalid{% endif %}">
+                                    <option value="">-- Select Client Group --</option>
+                                    {% for group in form.fields.client_group.queryset %}
+                                    <option value="{{ group.id }}" {% if form.client_group.value == group.id|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_description" class="form-label">Description</label>
+                                {{ form.description.errors }}
+                                <textarea name="description" id="id_description" class="form-control {% if form.description.errors %}is-invalid{% endif %}" rows="4">{{ form.description.value|default:'' }}</textarea>
+                                <div class="form-text">Optional description or notes for this budget</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Budget Allocations (Optional)</h5>
+                    <p class="text-muted">You can specify how this budget should be allocated across different platforms or campaigns.</p>
+                    
+                    <div id="allocationsContainer">
+                        <!-- Allocations will be added here dynamically -->
+                    </div>
+                    
+                    <button type="button" id="addAllocationBtn" class="btn btn-outline-secondary mb-4">
+                        <i class="bi bi-plus-circle me-1"></i> Add Allocation
+                    </button>
+                    <!-- create_budget.html (continued) -->
+                    <div class="border-top pt-4 mt-4">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'budget_dashboard' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> Create Budget
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Allocation Template (hidden, used for dynamic allocations) -->
+<div id="allocationTemplate" class="d-none">
+    <div class="allocation-row border rounded p-3 mb-3">
+        <div class="d-flex justify-content-between mb-3">
+            <h6 class="mb-0">Budget Allocation</h6>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-allocation-btn">
+                <i class="bi bi-x-circle"></i> Remove
+            </button>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Allocation Type</label>
+                    <select class="form-select allocation-type">
+                        <option value="platform">Platform</option>
+                        <option value="account">Account</option>
+                        <option value="campaign">Campaign</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Amount ($)</label>
+                    <input type="number" class="form-control allocation-amount" step="0.01" min="0">
+                </div>
+            </div>
+        </div>
+        <div class="platform-selector-container">
+            <div class="mb-3">
+                <label class="form-label">Platform</label>
+                <select class="form-select platform-selector">
+                    <option value="">-- Select Platform --</option>
+                    {% for platform in platforms %}
+                    <option value="{{ platform.id }}">{{ platform.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="account-selector-container d-none">
+            <div class="mb-3">
+                <label class="form-label">Account</label>
+                <select class="form-select account-selector">
+                    <option value="">-- Select Account --</option>
+                    <!-- Will be populated dynamically -->
+                </select>
+            </div>
+        </div>
+        <div class="campaign-selector-container d-none">
+            <div class="mb-3">
+                <label class="form-label">Campaign</label>
+                <select class="form-select campaign-selector">
+                    <option value="">-- Select Campaign --</option>
+                    <!-- Will be populated dynamically -->
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Entity type selection handling
+        const entityTypeRadios = document.querySelectorAll('input[name="entity_type"]');
+        const clientSelection = document.getElementById('clientSelection');
+        const groupSelection = document.getElementById('groupSelection');
+        
+        entityTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'client') {
+                    clientSelection.classList.remove('d-none');
+                    groupSelection.classList.add('d-none');
+                } else if (this.value === 'group') {
+                    clientSelection.classList.add('d-none');
+                    groupSelection.classList.remove('d-none');
+                } else {
+                    clientSelection.classList.add('d-none');
+                    groupSelection.classList.add('d-none');
+                }
+            });
+        });
+        
+        // Budget allocations functionality
+        const addAllocationBtn = document.getElementById('addAllocationBtn');
+        const allocationsContainer = document.getElementById('allocationsContainer');
+        const allocationTemplate = document.getElementById('allocationTemplate');
+        let allocationCount = 0;
+        
+        addAllocationBtn.addEventListener('click', function() {
+            // Clone the template
+            const newAllocation = allocationTemplate.querySelector('.allocation-row').cloneNode(true);
+            allocationCount++;
+            
+            // Add unique IDs to form elements
+            const allocationIndex = allocationCount;
+            newAllocation.querySelectorAll('select, input').forEach(element => {
+                const baseId = element.className.split(' ')[1];
+                element.id = `${baseId}_${allocationIndex}`;
+                
+                // Add hidden form fields for submission
+                if (element.classList.contains('allocation-type')) {
+                    element.name = `allocation_type_${allocationIndex}`;
+                } else if (element.classList.contains('allocation-amount')) {
+                    element.name = `allocation_amount_${allocationIndex}`;
+                } else if (element.classList.contains('platform-selector')) {
+                    element.name = `allocation_platform_${allocationIndex}`;
+                } else if (element.classList.contains('account-selector')) {
+                    element.name = `allocation_account_${allocationIndex}`;
+                } else if (element.classList.contains('campaign-selector')) {
+                    element.name = `allocation_campaign_${allocationIndex}`;
+                }
+            });
+            
+            // Set up remove button
+            newAllocation.querySelector('.remove-allocation-btn').addEventListener('click', function() {
+                newAllocation.remove();
+            });
+            
+            // Set up allocation type change handler
+            const typeSelector = newAllocation.querySelector('.allocation-type');
+            const platformContainer = newAllocation.querySelector('.platform-selector-container');
+            const accountContainer = newAllocation.querySelector('.account-selector-container');
+            const campaignContainer = newAllocation.querySelector('.campaign-selector-container');
+            
+            typeSelector.addEventListener('change', function() {
+                if (this.value === 'platform') {
+                    platformContainer.classList.remove('d-none');
+                    accountContainer.classList.add('d-none');
+                    campaignContainer.classList.add('d-none');
+                } else if (this.value === 'account') {
+                    platformContainer.classList.remove('d-none');
+                    accountContainer.classList.remove('d-none');
+                    campaignContainer.classList.add('d-none');
+                } else if (this.value === 'campaign') {
+                    platformContainer.classList.remove('d-none');
+                    accountContainer.classList.remove('d-none');
+                    campaignContainer.classList.remove('d-none');
+                }
+            });
+            
+            // Set up platform change handler (to load accounts)
+            newAllocation.querySelector('.platform-selector').addEventListener('change', function() {
+                const platformId = this.value;
+                const accountSelector = newAllocation.querySelector('.account-selector');
+                
+                // Clear current options
+                accountSelector.innerHTML = '<option value="">-- Select Account --</option>';
+                
+                if (platformId) {
+                    // Fetch accounts for this platform
+                    fetch(`/api/platform/${platformId}/accounts/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.accounts.forEach(account => {
+                                const option = document.createElement('option');
+                                option.value = account.id;
+                                option.textContent = account.name;
+                                accountSelector.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching accounts:', error));
+                }
+            });
+            
+            // Set up account change handler (to load campaigns)
+            newAllocation.querySelector('.account-selector').addEventListener('change', function() {
+                const accountId = this.value;
+                const campaignSelector = newAllocation.querySelector('.campaign-selector');
+                
+                // Clear current options
+                campaignSelector.innerHTML = '<option value="">-- Select Campaign --</option>';
+                
+                if (accountId) {
+                    // Fetch campaigns for this account
+                    fetch(`/api/account/${accountId}/campaigns/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.campaigns.forEach(campaign => {
+                                const option = document.createElement('option');
+                                option.value = campaign.id;
+                                option.textContent = campaign.name;
+                                campaignSelector.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching campaigns:', error));
+                }
+            });
+            
+            // Add the new allocation to the container
+            allocationsContainer.appendChild(newAllocation);
+        });
+        
+        // Form validation
+        const budgetForm = document.getElementById('budgetForm');
+        budgetForm.addEventListener('submit', function(event) {
+            // Basic validation
+            const entityType = document.querySelector('input[name="entity_type"]:checked').value;
+            
+            if (entityType === 'client' && !document.getElementById('id_client').value) {
+                event.preventDefault();
+                alert('Please select a client for this budget');
+                return false;
+            }
+            
+            if (entityType === 'group' && !document.getElementById('id_client_group').value) {
+                event.preventDefault();
+                alert('Please select a client group for this budget');
+                return false;
+            }
+            
+            // Validate dates
+            const startDate = new Date(document.getElementById('id_start_date').value);
+            const endDate = new Date(document.getElementById('id_end_date').value);
+            
+            if (startDate > endDate) {
+                event.preventDefault();
+                alert('End date must be after start date');
+                return false;
+            }
+            
+            // Add a hidden field with the number of allocations
+            const hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.name = 'allocation_count';
+            hiddenField.value = allocationCount;
+            this.appendChild(hiddenField);
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %}

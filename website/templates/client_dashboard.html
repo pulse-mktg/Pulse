@@ -1,0 +1,737 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load custom_filters %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .campaign-table th, .campaign-table td {
+        vertical-align: middle;
+    }
+    
+    .campaign-status {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-enabled {
+        background-color: #28a745;
+    }
+    
+    .status-paused {
+        background-color: #ffc107;
+    }
+    
+    .status-removed {
+        background-color: #dc3545;
+    }
+    
+    /* Style the campaign name links */
+    .campaign-table a.fw-bold {
+        color: #321fdb;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .campaign-table a.fw-bold:hover {
+        color: #1b0f99;
+        text-decoration: underline;
+    }
+    
+    /* Fix for any dropdown issues */
+    .campaign-table .dropdown-menu,
+    .campaign-table .dropdown {
+        display: none !important;
+    }
+    
+    /* Tag styling */
+    .tag-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .campaign-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+    
+    .campaign-tag {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+    
+    .campaign-tag .remove-tag {
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    
+    .campaign-tag .remove-tag:hover {
+        opacity: 1;
+    }
+    
+    .tag-button {
+        padding: 2px 6px;
+        background: none;
+        border: none;
+        color: #6c757d;
+        transition: color 0.2s;
+    }
+    
+    .tag-button:hover {
+        color: #321fdb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'agency_dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ client.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if client.logo and client.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }} logo" class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-person" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">{{ client.name }}</h1>
+            </div>
+
+            <div class="d-flex">
+                <a href="{% url 'client_detail' client.id %}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-gear-fill me-1"></i> Client Settings
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <!-- Google Ads Account Selector -->
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="accountSelector" class="form-label">Google Ads Account</label>
+                        <select id="accountSelector" class="form-select">
+                            <option value="all">All Accounts</option>
+                            {% for account in platform_accounts %}
+                            {% if account.platform_connection.platform_type.slug == 'google-ads' %}
+                            <option value="{{ account.id }}" {% if selected_account_id == account.id %}selected{% endif %}>
+                                {{ account.platform_client_name }} ({{ account.platform_client_id }})
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div class="col-md-8">
+                        <label class="form-label">Date Range</label>
+                        <div class="d-flex">
+                            <div class="btn-group me-3" role="group">
+                                <button type="button" class="date-filter-btn {% if date_range == '7d' or not date_range %}active{% endif %}" data-range="7d">
+                                    Last 7 Days
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == '30d' %}active{% endif %}" data-range="30d">
+                                    Last 30 Days
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == 'month' %}active{% endif %}" data-range="month">
+                                    This Month
+                                </button>
+                                <button type="button" class="date-filter-btn {% if date_range == 'last_month' %}active{% endif %}" data-range="last_month">
+                                    Last Month
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Ads Campaigns Table Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-google me-2"></i> Google Ads Campaigns
+                </h5>
+                {% if selected_account_id %}
+                <button onclick="syncGoogleAdsData({{ client.id }}, {% if selected_account_id %}{{ selected_account_id }}{% else %}0{% endif %})" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-repeat me-1"></i> {% if selected_account_id %}Sync Data{% else %}Sync All Accounts{% endif %}
+                </button>
+                {% else %}
+                <a href="{% url 'sync_google_ads_client_data' client.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-repeat me-1"></i> Sync All Accounts
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover campaign-table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><i class="bi bi-tags" title="Tags"></i></th>
+                                <th>Campaign</th>
+                                <th>Status</th>
+                                <th class="text-end">Impressions</th>
+                                <th class="text-end">Clicks</th>
+                                <th class="text-end">CTR</th>
+                                <th class="text-end">Cost</th>
+                                <th class="text-end">CPC</th>
+                                <th class="text-end">Conv.</th>
+                                <th class="text-end">Cost Per Conv.</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campaign in campaigns %}
+                            <tr data-campaign-id="{{ campaign.id }}">
+                                <td>
+                                    <div class="tag-container">
+                                        <!-- Tag display area -->
+                                        <div class="campaign-tags mb-1">
+                                            {% for tag_assignment in campaign.tag_assignments.all %}
+                                            <span class="badge rounded-pill campaign-tag" 
+                                                  style="background-color: {{ tag_assignment.tag.color }};" 
+                                                  data-tag-id="{{ tag_assignment.tag.id }}">
+                                                {{ tag_assignment.tag.name }}
+                                                <i class="bi bi-x-circle ms-1 remove-tag" data-tag-id="{{ tag_assignment.tag.id }}" data-campaign-id="{{ campaign.id }}"></i>
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <!-- Tag button -->
+                                        <button class="btn btn-sm tag-button" data-campaign-id="{{ campaign.id }}">
+                                            <i class="bi bi-tag-fill"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <a href="{% url 'google_ads_campaign_detail' client.id campaign.client_account.id campaign.id %}" class="fw-bold">
+                                            {{ campaign.name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-muted small"><i class="bi bi-info-circle"></i> Click name for details</div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if campaign.status == 'ENABLED' %}
+                                        <span class="campaign-status status-enabled"></span>
+                                        Enabled
+                                        {% elif campaign.status == 'PAUSED' %}
+                                        <span class="campaign-status status-paused"></span>
+                                        Paused
+                                        {% else %}
+                                        <span class="campaign-status status-removed"></span>
+                                        {{ campaign.status|title }}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-end">{{ campaign.metrics_data.impressions|intcomma }}</td>
+                                <td class="text-end">{{ campaign.metrics_data.clicks|intcomma }}</td>
+                                <td class="text-end">{{ campaign.metrics_data.ctr|floatformat:2 }}%</td>
+                                <td class="text-end">${{ campaign.metrics_data.cost|floatformat:2|intcomma }}</td>
+                                <td class="text-end">${{ campaign.metrics_data.avg_cpc|floatformat:2 }}</td>
+                                <td class="text-end">{{ campaign.metrics_data.conversions|floatformat:0|intcomma }}</td>
+                                <td class="text-end">
+                                    {% if campaign.metrics_data.conversions > 0 %}
+                                    ${{ campaign.metrics_data.cost|div:campaign.metrics_data.conversions|floatformat:2 }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <!-- Removed dropdown with view details option -->
+                                <td>
+                                    <!-- Empty cell - Details button removed -->
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="text-center py-5">
+                                    <div class="py-4">
+                                        <i class="bi bi-search text-muted" style="font-size: 2rem;"></i>
+                                        <p class="mt-3">No campaigns found for the selected account.</p>
+                                        {% if platform_accounts %}
+                                            {% if selected_account_id %}
+                                            <button onclick="syncGoogleAdsData({{ client.id }}, {% if selected_account_id %}{{ selected_account_id }}{% else %}0{% endif %})" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-arrow-repeat me-1"></i> {% if selected_account_id %}Sync Data{% else %}Sync All Accounts{% endif %}
+                                            </button>
+                                            {% else %}
+                                            <a href="{% url 'sync_google_ads_client_data' client.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-arrow-repeat me-1"></i> Sync All Accounts
+                                            </a>
+                                            {% endif %}
+                                        {% else %}
+                                        <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-2">
+                                            <i class="bi bi-plus-circle me-1"></i> Connect Google Ads
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Tag Modal -->
+<div class="modal fade" id="tagModal" tabindex="-1" aria-labelledby="tagModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tagModalLabel">Manage Campaign Tags</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Campaign title will be displayed here -->
+                <h6 id="taggedCampaignName" class="mb-3 text-primary"></h6>
+                
+                <!-- Current tags -->
+                <div class="mb-3">
+                    <label class="form-label">Current Tags</label>
+                    <div id="currentTags" class="mb-2">
+                        <!-- Will be populated with JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Existing tags -->
+                <div class="mb-3">
+                    <label class="form-label">Add Existing Tag</label>
+                    <select id="existingTagSelect" class="form-select mb-2">
+                        <option value="">Select a tag...</option>
+                        {% for tag in all_tags %}
+                        <option value="{{ tag.id }}" data-color="{{ tag.color }}">{{ tag.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="addExistingTagBtn" class="btn btn-sm btn-outline-primary" disabled>
+                        <i class="bi bi-plus-circle"></i> Add Tag
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <!-- Create new tag form -->
+                <div>
+                    <label class="form-label">Create New Tag</label>
+                    <form id="newTagForm" class="row g-2">
+                        <div class="col-md-6">
+                            <input type="text" id="newTagName" class="form-control" placeholder="Tag name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="color" id="newTagColor" class="form-control form-control-color" value="#6c757d" title="Choose tag color">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Account selector functionality
+    const accountSelector = document.getElementById('accountSelector');
+    if (accountSelector) {
+        accountSelector.addEventListener('change', function() {
+            const accountId = this.value;
+            const url = new URL(window.location.href);
+            
+            if (accountId === 'all') {
+                url.searchParams.delete('account_id');
+            } else {
+                url.searchParams.set('account_id', accountId);
+            }
+            
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Date range buttons functionality
+    const dateFilterBtns = document.querySelectorAll('.date-filter-btn');
+    dateFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const range = this.getAttribute('data-range');
+            const url = new URL(window.location.href);
+            
+            url.searchParams.set('date_range', range);
+            window.location.href = url.toString();
+        });
+    });
+    
+    // Fix for dropdown menus
+    function fixCampaignDropdowns() {
+        const campaignDropdowns = document.querySelectorAll('.campaign-table .dropdown-menu');
+        campaignDropdowns.forEach(dropdown => {
+            dropdown.classList.remove('show');
+            dropdown.setAttribute('aria-expanded', 'false');
+        });
+    }
+    
+    // Run on page load and after a small delay
+    fixCampaignDropdowns();
+    setTimeout(fixCampaignDropdowns, 500);
+});
+
+function syncGoogleAdsData(clientId, accountId) {
+    let url;
+    if (accountId && accountId !== 0) {
+        url = `/client/${clientId}/google-ads/${accountId}/sync/`;
+    } else {
+        url = `/client/${clientId}/google-ads/sync/`;
+    }
+    window.location.href = url;
+}
+
+// Tag functionality
+const tagModal = document.getElementById('tagModal');
+const taggedCampaignName = document.getElementById('taggedCampaignName');
+const currentTagsContainer = document.getElementById('currentTags');
+const existingTagSelect = document.getElementById('existingTagSelect');
+const addExistingTagBtn = document.getElementById('addExistingTagBtn');
+const newTagForm = document.getElementById('newTagForm');
+const newTagName = document.getElementById('newTagName');
+const newTagColor = document.getElementById('newTagColor');
+
+// Bootstrap modal object
+let modal;
+if (tagModal) {
+    modal = new coreui.Modal(tagModal);
+}
+
+// Store the currently selected campaign
+let selectedCampaignId = null;
+let selectedCampaignName = null;
+
+// Initialize tag buttons
+function initTagButtons() {
+    const tagButtons = document.querySelectorAll('.tag-button');
+    tagButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Get campaign ID and name
+            selectedCampaignId = this.getAttribute('data-campaign-id');
+            selectedCampaignName = this.closest('tr').querySelector('a.fw-bold').textContent.trim();
+            
+            // Set campaign name in modal
+            taggedCampaignName.textContent = selectedCampaignName;
+            
+            // Load current tags
+            loadCurrentTags(selectedCampaignId);
+            
+            // Show the modal
+            modal.show();
+        });
+    });
+    
+    // Handle remove tag button clicks
+    document.querySelectorAll('.remove-tag').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const tagId = this.getAttribute('data-tag-id');
+            const campaignId = this.getAttribute('data-campaign-id');
+            
+            removeTag(tagId, campaignId);
+        });
+    });
+}
+
+// Enable/disable add existing tag button
+existingTagSelect.addEventListener('change', function() {
+    addExistingTagBtn.disabled = !this.value;
+});
+
+// Add existing tag button click
+addExistingTagBtn.addEventListener('click', function() {
+    const tagId = existingTagSelect.value;
+    const tagOption = existingTagSelect.options[existingTagSelect.selectedIndex];
+    const tagName = tagOption.textContent;
+    const tagColor = tagOption.getAttribute('data-color');
+    
+    if (tagId && selectedCampaignId) {
+        addTagToCampaign(tagId, selectedCampaignId, tagName, tagColor);
+    }
+});
+
+// Create new tag form submit
+newTagForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const tagName = newTagName.value.trim();
+    const tagColor = newTagColor.value;
+    
+    if (tagName && selectedCampaignId) {
+        createNewTag(tagName, tagColor, selectedCampaignId);
+    }
+});
+
+// Load current tags for a campaign
+function loadCurrentTags(campaignId) {
+    fetch(`/api/campaigns/${campaignId}/tags/`)
+        .then(response => response.json())
+        .then(data => {
+            // Clear current tags container
+            currentTagsContainer.innerHTML = '';
+            
+            if (data.tags && data.tags.length > 0) {
+                // Add each tag
+                data.tags.forEach(tag => {
+                    const tagElement = createTagElement(tag);
+                    currentTagsContainer.appendChild(tagElement);
+                });
+            } else {
+                // No tags message
+                currentTagsContainer.innerHTML = '<p class="text-muted">No tags assigned to this campaign.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tags:', error);
+            currentTagsContainer.innerHTML = '<p class="text-danger">Failed to load tags.</p>';
+        });
+}
+
+// Create a tag HTML element
+function createTagElement(tag) {
+    const tagElement = document.createElement('span');
+    tagElement.className = 'badge rounded-pill campaign-tag me-1 mb-1';
+    tagElement.style.backgroundColor = tag.color;
+    tagElement.setAttribute('data-tag-id', tag.id);
+    
+    tagElement.innerHTML = `
+        ${tag.name}
+        <i class="bi bi-x-circle ms-1 remove-tag" data-tag-id="${tag.id}" data-campaign-id="${selectedCampaignId}"></i>
+    `;
+    
+    // Add event listener to remove button
+    const removeBtn = tagElement.querySelector('.remove-tag');
+    removeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const tagId = this.getAttribute('data-tag-id');
+        const campaignId = this.getAttribute('data-campaign-id');
+        
+        removeTag(tagId, campaignId);
+    });
+    
+    return tagElement;
+}
+
+// Add a tag to a campaign
+function addTagToCampaign(tagId, campaignId, tagName, tagColor) {
+    fetch(`/api/campaigns/${campaignId}/tags/${tagId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add tag to the UI
+            if (!data.already_exists) {
+                // Create the tag in the modal
+                const tag = { id: tagId, name: tagName, color: tagColor };
+                const tagElement = createTagElement(tag);
+                
+                // Replace "No tags" message if it exists
+                if (currentTagsContainer.querySelector('.text-muted')) {
+                    currentTagsContainer.innerHTML = '';
+                }
+                
+                currentTagsContainer.appendChild(tagElement);
+                
+                // Also add tag to the campaign row
+                const campaignTagsContainer = document.querySelector(`tr[data-campaign-id="${campaignId}"] .campaign-tags`);
+                if (campaignTagsContainer) {
+                    const rowTagElement = document.createElement('span');
+                    rowTagElement.className = 'badge rounded-pill campaign-tag';
+                    rowTagElement.style.backgroundColor = tagColor;
+                    rowTagElement.setAttribute('data-tag-id', tagId);
+                    
+                    rowTagElement.innerHTML = `
+                        ${tagName}
+                        <i class="bi bi-x-circle ms-1 remove-tag" data-tag-id="${tagId}" data-campaign-id="${campaignId}"></i>
+                    `;
+                    
+                    campaignTagsContainer.appendChild(rowTagElement);
+                    
+                    // Add event listener
+                    const removeBtn = rowTagElement.querySelector('.remove-tag');
+                    removeBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const tagId = this.getAttribute('data-tag-id');
+                        const campaignId = this.getAttribute('data-campaign-id');
+                        removeTag(tagId, campaignId);
+                    });
+                }
+                
+                // Reset the select
+                existingTagSelect.value = '';
+                addExistingTagBtn.disabled = true;
+            } else {
+                // Tag already exists - show a message
+                alert('This tag is already assigned to the campaign.');
+            }
+        } else {
+            console.error('Error adding tag:', data.error);
+            alert('Failed to add tag. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding tag:', error);
+        alert('Failed to add tag. Please try again.');
+    });
+}
+
+// Create a new tag and add it to the campaign
+function createNewTag(tagName, tagColor, campaignId) {
+    fetch('/api/tags/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ name: tagName, color: tagColor })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add the new tag to the campaign
+            addTagToCampaign(data.tag.id, campaignId, data.tag.name, data.tag.color);
+            
+            // Add to existing tags dropdown
+            const option = document.createElement('option');
+            option.value = data.tag.id;
+            option.textContent = data.tag.name;
+            option.setAttribute('data-color', data.tag.color);
+            existingTagSelect.appendChild(option);
+            
+            // Reset the form
+            newTagName.value = '';
+            newTagColor.value = '#6c757d';
+        } else {
+            console.error('Error creating tag:', data.error);
+            alert(`Failed to create tag: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error creating tag:', error);
+        alert('Network error when creating tag. Please check your connection and try again.');
+    });
+}
+
+// Remove a tag from a campaign
+function removeTag(tagId, campaignId) {
+    fetch(`/api/campaigns/${campaignId}/tags/${tagId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove tag from UI in the modal
+            const modalTagElement = currentTagsContainer.querySelector(`[data-tag-id="${tagId}"]`);
+            if (modalTagElement) {
+                modalTagElement.remove();
+            }
+            
+            // If no tags left, show the "no tags" message
+            if (currentTagsContainer.children.length === 0) {
+                currentTagsContainer.innerHTML = '<p class="text-muted">No tags assigned to this campaign.</p>';
+            }
+            
+            // Remove tag from the campaign row in the table
+            const rowTagElement = document.querySelector(`tr[data-campaign-id="${campaignId}"] .campaign-tags [data-tag-id="${tagId}"]`);
+            if (rowTagElement) {
+                rowTagElement.remove();
+            }
+        } else {
+            console.error('Error removing tag:', data.error);
+            alert('Failed to remove tag. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error removing tag:', error);
+        alert('Failed to remove tag. Please try again.');
+    });
+}
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    const csrfCookieName = 'csrftoken';
+    let csrfToken = null;
+    
+    // Check cookies for the token
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, csrfCookieName.length + 1) === (csrfCookieName + '=')) {
+                csrfToken = decodeURIComponent(cookie.substring(csrfCookieName.length + 1));
+                break;
+            }
+        }
+    }
+    
+    return csrfToken;
+}
+
+// Initialize tag functionality
+document.addEventListener('DOMContentLoaded', function() {
+    initTagButtons();
+});
+</script>
+{% endblock %}

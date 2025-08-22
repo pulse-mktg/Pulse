@@ -1,0 +1,665 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .performance-indicator {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        display: inline-block;
+    }
+
+    .performance-positive {
+        background-color: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+
+    .performance-negative {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .performance-neutral {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+    }
+
+    .platform-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        margin-right: 15px;
+    }
+
+    .platform-google {
+        background-color: #f8f9fa;
+        color: #4285F4;
+    }
+
+    .platform-facebook {
+        background-color: #f8f9fa;
+        color: #3b5998;
+    }
+
+    .platform-linkedin {
+        background-color: #f8f9fa;
+        color: #0077b5;
+    }
+
+    .platform-microsoft {
+        background-color: #f8f9fa;
+        color: #00a4ef;
+    }
+
+    .budget-status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-on-track {
+        background-color: #28a745;
+    }
+    
+    .status-underspend {
+        background-color: #17a2b8;
+    }
+    
+    .status-overspend {
+        background-color: #dc3545;
+    }
+
+    .feature-card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.3s;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-banner {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .google-connect-section {
+        background-color: #f8f9fa;
+        border-left: 4px solid #4285F4;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .client-logo-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="welcome-banner">
+    <div class="row align-items-center">
+        <div class="col-md-9">
+            <h2 class="mb-2">Welcome to Pulse Marketing Analytics</h2>
+            <p class="mb-0">Campaign performance and budget monitoring for marketing agencies</p>
+        </div>
+        <div class="col-md-3 text-end">
+            <a href="#" class="btn btn-primary">
+                <i class="bi bi-graph-up me-2"></i>Go to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Google Ads Connection Section -->
+<div class="google-connect-section mb-4">
+    <div class="d-flex align-items-center mb-3">
+        <div class="platform-icon platform-google me-3">
+            <i class="bi bi-google"></i>
+        </div>
+        <div>
+            <h4 class="mb-0">Google Ads Integration</h4>
+            <p class="mb-0 text-muted">Connect your Google Ads accounts to monitor performance and budgets</p>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-link-45deg text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5>Connect Account</h5>
+                    <p class="text-muted small mb-3">Link your Google Ads account to start monitoring</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        <a href="#" class="btn btn-sm btn-outline-primary"></a>
+                        <i class="bi bi-plus-circle me-1"></i> Add Connection
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-graph-up text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5>View Performance</h5>
+                    <p class="text-muted small mb-3">Monitor campaigns, ad groups, and keywords</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-bar-chart me-1"></i> View Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-cash-stack text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5>Budget Monitoring</h5>
+                    <p class="text-muted small mb-3">Track spend and manage budgets across accounts</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-cash me-1"></i> Manage Budgets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Features Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4 class="mb-3">Key Features</h4>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="feature-card card h-100">
+            <div class="card-body">
+                <div class="feature-icon text-primary">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <h5>Agency Dashboard</h5>
+                <p>Get a comprehensive overview of all your clients and campaigns in one place. Monitor performance metrics, track budget utilization, and identify opportunities.</p>
+                <a href="#" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-right"></i> Explore
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="feature-card card h-100">
+            <div class="card-body">
+                <div class="feature-icon text-primary">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h5>Client Management</h5>
+                <p>Organize clients into groups, manage platform connections, and track performance on a client-by-client basis. Keep everything organized and efficient.</p>
+                <a href="#" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-right"></i> Explore
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="feature-card card h-100">
+            <div class="card-body">
+                <div class="feature-icon text-primary">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <h5>Budget Control</h5>
+                <p>Create and monitor budgets across platforms, clients, and campaigns. Get alerts for overspend or underspend, and ensure your campaigns stay on track.</p>
+                <a href="#" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-right"></i> Explore
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4 class="mb-3">Quick Stats</h4>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Active Clients</div>
+                        <h3 class="mb-0">{{ active_clients_count|default:"0" }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Active Campaigns</div>
+                        <h3 class="mb-0">48</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-bullseye"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Platform Connections</div>
+                        <h3 class="mb-0">4</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-link-45deg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Total Monthly Budget</div>
+                        <h3 class="mb-0">$142,500</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-cash"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Clients -->
+{% if all_clients %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i> Recent Clients</h5>
+                <a href="#" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Add Client
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Connected Platforms</th>
+                                <th class="text-end">Monthly Budget</th>
+                                <th class="text-end">Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for client in all_clients|slice:":5" %}
+                            <tr class="client-row" data-client-id="{{ client.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if client.logo %}
+                                        <div class="me-2" style="width: 40px; height: 40px;">
+                                            <img src="{{ client.logo.url }}" alt="{{ client.name }}" class="img-fluid rounded">
+                                        </div>
+                                        {% else %}
+                                        <div class="client-logo-placeholder me-2">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                        {% endif %}
+                                        <div>
+                                            <a href="#" class="fw-medium text-decoration-none">{{ client.name }}</a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <i class="bi bi-google text-primary me-1"></i>
+                                    <i class="bi bi-facebook text-primary me-1"></i>
+                                </td>
+                                <td class="text-end">${{ client.id|add:"12500"|floatformat:0|intcomma }}</td>
+                                <td class="text-end">
+                                    {% if client.id|divisibleby:"3" %}
+                                    <span class="budget-status-indicator status-overspend"></span> Overspend
+                                    {% elif client.id|divisibleby:"2" %}
+                                    <span class="budget-status-indicator status-underspend"></span> Underspend
+                                    {% else %}
+                                    <span class="budget-status-indicator status-on-track"></span> On Track
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="#" class="btn btn-sm btn-outline-primary me-1">
+                                        <i class="bi bi-bar-chart"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if all_clients.count > 5 %}
+                <div class="text-center mt-3">
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        View All Clients
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Platform Distribution -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i> Platform Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="position-relative mb-4" style="height: 220px;">
+                    <canvas id="platformDistributionChart"></canvas>
+                </div>
+                <div class="mt-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="platform-icon platform-google">
+                            <i class="bi bi-google"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>Google Ads</div>
+                                <div>
+                                    <span class="fw-medium">$86,500</span>
+                                    <span class="text-muted">(60.7%)</span>
+                                </div>
+                            </div>
+                            <div class="progress progress-thin mt-1">
+                                <div class="progress-bar" style="width: 60.7%; background-color: rgba(66, 133, 244, 0.8)"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="platform-icon platform-facebook">
+                            <i class="bi bi-facebook"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>Facebook Ads</div>
+                                <div>
+                                    <span class="fw-medium">$32,750</span>
+                                    <span class="text-muted">(23.0%)</span>
+                                </div>
+                            </div>
+                            <div class="progress progress-thin mt-1">
+                                <div class="progress-bar" style="width: 23.0%; background-color: rgba(59, 89, 152, 0.8)"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="platform-icon platform-linkedin">
+                            <i class="bi bi-linkedin"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>LinkedIn Ads</div>
+                                <div>
+                                    <span class="fw-medium">$15,400</span>
+                                    <span class="text-muted">(10.8%)</span>
+                                </div>
+                            </div>
+                            <div class="progress progress-thin mt-1">
+                                <div class="progress-bar" style="width: 10.8%; background-color: rgba(0, 119, 181, 0.8)"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="platform-icon platform-microsoft">
+                            <i class="bi bi-microsoft"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>Microsoft Ads</div>
+                                <div>
+                                    <span class="fw-medium">$7,850</span>
+                                    <span class="text-muted">(5.5%)</span>
+                                </div>
+                            </div>
+                            <div class="progress progress-thin mt-1">
+                                <div class="progress-bar" style="width: 5.5%; background-color: rgba(0, 120, 215, 0.8)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i> Budget Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-4">
+                        <div class="h3 mb-0">$142,500</div>
+                        <div class="text-muted small">Total Budget</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="h3 mb-0">$98,750</div>
+                        <div class="text-muted small">Total Spend</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="h3 mb-0">69.3%</div>
+                        <div class="text-muted small">Utilization</div>
+                    </div>
+                </div>
+                
+                <h6 class="mb-3">Budget Status</h6>
+                <div class="row mb-4">
+                    <div class="col-4 text-center">
+                        <div class="budget-status-indicator status-on-track d-inline-block" style="width: 15px; height: 15px;"></div>
+                        <div class="h4 mb-0">7</div>
+                        <div class="text-muted small">On Track</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="budget-status-indicator status-underspend d-inline-block" style="width: 15px; height: 15px;"></div>
+                        <div class="h4 mb-0">3</div>
+                        <div class="text-muted small">Underspend</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="budget-status-indicator status-overspend d-inline-block" style="width: 15px; height: 15px;"></div>
+                        <div class="h4 mb-0">2</div>
+                        <div class="text-muted small">Overspend</div>
+                    </div>
+                </div>
+                
+                <h6 class="mb-3">Clients Requiring Attention</h6>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="budget-status-indicator status-overspend"></span>
+                            <a href="#" class="text-decoration-none">Acme Corporation</a>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">
+                                Overspend
+                            </span>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="budget-status-indicator status-overspend"></span>
+                            <a href="#" class="text-decoration-none">Global Enterprises</a>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">
+                                Overspend
+                            </span>
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="budget-status-indicator status-underspend"></span>
+                            <a href="#" class="text-decoration-none">Tech Innovations</a>
+                        </div>
+                        <div>
+                            <span class="badge bg-info">
+                                Underspend
+                            </span>
+                        </div>
+                    </li>
+                </ul>
+                <div class="text-center mt-3">
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        View All Budgets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Get Started -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-9">
+                <h4 class="mb-2">Ready to get started?</h4>
+                <p class="mb-0">Connect your Google Ads account and start monitoring your campaign performance and budgets.</p>
+            </div>
+            <div class="col-md-3 text-end">
+                <a href="#" class="btn btn-primary">
+                    <i class="bi bi-google me-2"></i>Connect Google Ads
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Platform Distribution Chart
+    const distributionCtx = document.getElementById('platformDistributionChart');
+    if (distributionCtx) {
+        const distributionChart = new Chart(distributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Google Ads', 'Facebook Ads', 'LinkedIn Ads', 'Microsoft Ads'],
+                datasets: [{
+                    data: [60.7, 23.0, 10.8, 5.5],
+                    backgroundColor: [
+                        'rgba(66, 133, 244, 0.8)',
+                        'rgba(59, 89, 152, 0.8)', 
+                        'rgba(0, 119, 181, 0.8)',
+                        'rgba(0, 120, 215, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(66, 133, 244, 1)',
+                        'rgba(59, 89, 152, 1)',
+                        'rgba(0, 119, 181, 1)',
+                        'rgba(0, 120, 215, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Make client rows clickable
+    const clientRows = document.querySelectorAll('.client-row');
+    clientRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Avoid triggering when clicking on buttons
+            if (e.target.closest('a') || e.target.closest('button')) {
+                return;
+            }
+            
+            const clientId = this.dataset.clientId;
+            window.location.href = `/client/${clientId}/dashboard/`;
+        });
+        
+        // Change cursor to pointer to indicate clickable
+        row.style.cursor = 'pointer';
+    });
+});
+</script>
+{% endblock %}

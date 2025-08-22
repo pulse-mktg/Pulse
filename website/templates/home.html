@@ -1,0 +1,2548 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+{% if user.is_authenticated %}
+
+{% if not selected_tenant %}
+<div class="card text-center">
+    <div class="card-body py-5">
+        <i class="bi bi-building" style="font-size: 3rem; color: #8a93a2;"></i>
+        <h5 class="mt-3">No Tenants Found</h5>
+        <p class="text-medium-emphasis">You don't have any tenants yet.</p>
+        <!-- Remove this button for non-staff users -->
+        {% if user.is_staff %}
+        <a href="{% url 'create_tenant' %}" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle me-1"></i> Create Your First Tenant
+        </a>
+        {% else %}
+        <p class="text-muted">Please contact an administrator to get access to a tenant.</p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Tenant and Client View -->
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if selected_tenant.logo and selected_tenant.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ selected_tenant.logo.url }}" alt="{{ selected_tenant.name }} logo"
+                        class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-building" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">{{ selected_tenant.name }}</h1>
+            </div>
+
+            {% if all_user_tenants.count > 1 %}
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
+                    aria-expanded="false">
+                    Switch Tenant
+                </button>
+                <ul class="dropdown-menu">
+                    {% for tenant in all_user_tenants %}
+                    {% if tenant.id != selected_tenant.id %}
+                    <li>
+                        <a class="dropdown-item" href="{% url 'switch_tenant' tenant.id %}">
+                            {{ tenant.name }}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add this after the tenant information in home.html, right before the Quick Stats Section -->
+{% if user.is_authenticated and selected_tenant %}
+    {% if user.date_joined|date:"Y-m-d" == now|date:"Y-m-d" %}
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <h4 class="alert-heading">Welcome to Pulse!</h4>
+        <p>Your agency account "<strong>{{ selected_tenant.name }}</strong>" has been created automatically. You can start by adding your first client.</p>
+        <hr>
+        <p class="mb-0">Need help getting started? Check out the available features in the sidebar.</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+{% endif %}
+
+<!-- Quick Stats Section -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-success text-white">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-success">Active Clients</div>
+                    <div class="fs-4 fw-semibold">
+                        {{ active_clients_count|default:0 }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-primary text-white">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-primary">Total Clients</div>
+                    <div class="fs-4 fw-semibold">{{ total_clients_count|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <div class="icon-circle bg-warning text-white">
+                        <i class="bi bi-calendar"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="fs-6 fw-semibold text-warning">Created</div>
+                    <div class="fs-6">{{ selected_tenant.created_at|date:"M d, Y" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Clients Section -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-person-badge me-2"></i> All Clients
+        </h5>
+        <div class="d-flex align-items-center">
+            <!-- Date Range Selector -->
+            <div class="date-range-selector me-3">
+                <div class="d-flex align-items-center">
+                    <label for="dateRangeSelect" class="form-label me-2 mb-0 text-muted" style="font-size: 0.875rem;">Date Range:</label>
+                    <select id="dateRangeSelect" class="form-select form-select-sm" style="width: auto; min-width: 140px;">
+                        <option value="last_7_days">Last 7 days</option>
+                        <option value="last_30_days" selected>Last 30 days</option>
+                        <option value="current_month">Current month</option>
+                        <option value="last_month">Last month</option>
+                        <option value="current_quarter">Current quarter</option>
+                        <option value="last_quarter">Last quarter</option>
+                        <option value="custom">Custom range</option>
+                    </select>
+                </div>
+                <!-- Custom Date Range Inputs (hidden by default) -->
+                <div id="customDateRange" class="mt-2" style="display: none;">
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="date" id="customStartDate" class="form-control form-control-sm" style="width: 140px;">
+                        <span class="text-muted">to</span>
+                        <input type="date" id="customEndDate" class="form-control form-control-sm" style="width: 140px;">
+                        <button id="applyCustomRange" class="btn btn-sm btn-primary">Apply</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Freshness Indicator -->
+            <div id="dataFreshnessIndicator" class="me-3" style="font-size: 0.875rem;">
+                <span id="freshnessText" class="text-muted">
+                    <i class="bi bi-clock me-1"></i> Checking data freshness...
+                </span>
+            </div>
+            
+            <!-- Refresh Dropdown -->
+            <div class="dropdown me-2">
+                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="refreshDropdown" data-coreui-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-arrow-clockwise me-1"></i> <span id="refreshButtonText">Refresh</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button class="dropdown-item" onclick="refreshPageData()">
+                            <i class="bi bi-arrow-clockwise me-2"></i> Refresh Page Data
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item" onclick="bulkRefreshGoogleAdsData()">
+                            <i class="bi bi-google me-2"></i> Smart Refresh (Skip Fresh Data)
+                        </button>
+                    </li>
+                    <li>
+                        <small class="dropdown-item-text text-muted px-3">
+                            This will fetch fresh campaign data from Google Ads API for all clients
+                        </small>
+                    </li>
+                </ul>
+            </div>
+            <!-- Goal Mode Toggle -->
+            <div class="goal-mode-toggle me-3">
+                <div class="d-flex align-items-center">
+                    <label for="goalModeSelect" class="form-label me-2 mb-0 text-muted" style="font-size: 0.875rem;">Goals:</label>
+                    <select id="goalModeSelect" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                        <option value="mixed">Smart Goals</option>
+                        <option value="global">Global Only</option>
+                        <option value="client_specific">Client Specific</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Column Settings button -->
+            <button id="customizeColumns" class="btn btn-sm btn-outline-secondary me-2">
+                <i class="bi bi-gear me-1"></i> Customize Columns
+            </button>
+            <!-- Archived Clients button -->
+            <button id="showArchivedClientsBtn" class="btn btn-sm btn-outline-secondary me-2">
+                <i class="bi bi-archive me-1"></i> Archived Clients
+            </button>
+            <!-- Add Client button -->
+            <a href="{% url 'create_client' %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Add Client
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if all_clients %}
+        <!-- Client Cards Layout -->
+        <div class="client-cards-container">
+            {% for client in all_clients %}
+            <div class="client-card mb-4" data-client-id="{{ client.id }}">
+                <!-- Client Header -->
+                <div class="client-header d-flex align-items-center justify-content-between p-3 bg-light rounded-top">
+                    <div class="d-flex align-items-center">
+                        <!-- Client Logo -->
+                        {% if client.logo and client.logo.name %}
+                        <div class="client-logo me-3" style="width: 48px; height: 48px;">
+                            <img src="{{ client.logo.url }}" alt="{{ client.name }} logo"
+                                class="img-fluid rounded-circle border">
+                        </div>
+                        {% else %}
+                        <div class="client-logo me-3 bg-white d-flex align-items-center justify-content-center rounded-circle border"
+                            style="width: 48px; height: 48px;">
+                            <i class="bi bi-building" style="font-size: 1.2rem; color: #6c757d;"></i>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Client Info -->
+                        <div>
+                            <h5 class="mb-1 fw-semibold">{{ client.name }}</h5>
+                            <div class="client-meta d-flex align-items-center gap-3 text-muted small">
+                                <!-- Google Ads Account Count -->
+                                <span>
+                                    <i class="bi bi-google me-1"></i>
+                                    {{ client.platform_accounts.count }} account{{ client.platform_accounts.count|pluralize }}
+                                </span>
+                                
+                                <!-- Data Freshness -->
+                                <span id="client-freshness-{{ client.id }}">
+                                    <i class="bi bi-clock me-1"></i>
+                                    <span class="freshness-indicator">Loading...</span>
+                                </span>
+                                
+                                <!-- Date Range Info -->
+                                <span class="date-range-info">
+                                    <i class="bi bi-calendar-range me-1"></i>
+                                    <span id="currentDateRangeDisplay" class="text-muted">Last 30 days</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Client Actions -->
+                    <div class="client-actions d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshClientData({{ client.id }})" 
+                                id="refresh-btn-{{ client.id }}" title="Refresh this client's data">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'client_detail' client.id %}">
+                                    <i class="bi bi-eye me-2"></i>View Details
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'edit_client' client.id %}">
+                                    <i class="bi bi-pencil me-2"></i>Edit Client
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="setClientGoals({{ client.id }})">
+                                    <i class="bi bi-target me-2"></i>Set Goals
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleClientGlobalGoals({{ client.id }})">
+                                    <i class="bi bi-toggle-on me-2"></i>Toggle Global Goals
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Metrics Grid -->
+                <div class="client-metrics-grid p-3 bg-white border-start border-end">
+                    <div class="row g-3">
+                        {% with metrics=client.metrics %}
+                        <!-- Impressions -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center">
+                                <div class="metric-value h4 mb-1">{{ metrics.impressions|default:"0"|intcomma }}</div>
+                                <div class="metric-label text-muted small">Impressions</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Clicks -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center">
+                                <div class="metric-value h4 mb-1">{{ metrics.clicks|default:"0"|intcomma }}</div>
+                                <div class="metric-label text-muted small">Clicks</div>
+                            </div>
+                        </div>
+                        
+                        <!-- CTR -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center performance-metric heatmap-cell" data-status="{{ metrics.ctr_status }}">
+                                <div class="metric-value h4 mb-1">{{ metrics.ctr|default:"0" }}%</div>
+                                <div class="metric-label text-muted small">CTR</div>
+                                {% if metrics.ctr_goal %}
+                                <div class="goal-indicator text-muted xs">
+                                    Goal: {{ metrics.ctr_goal }}%
+                                    {% if metrics.goals_source == 'global' %}
+                                    <i class="bi bi-globe2 ms-1" title="Using global goal"></i>
+                                    {% elif metrics.goals_source == 'mixed' %}
+                                    <i class="bi bi-diagram-3 ms-1" title="Using mixed goals"></i>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Conversions -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center">
+                                <div class="metric-value h4 mb-1">{{ metrics.conversions|default:"0"|floatformat:0|intcomma }}</div>
+                                <div class="metric-label text-muted small">Conversions</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Conversion Rate -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center performance-metric heatmap-cell" data-status="{{ metrics.conversion_rate_status }}">
+                                <div class="metric-value h4 mb-1">{{ metrics.conversion_rate|default:"0" }}%</div>
+                                <div class="metric-label text-muted small">Conv. Rate</div>
+                                {% if metrics.conversion_rate_goal %}
+                                <div class="goal-indicator text-muted xs">
+                                    Goal: {{ metrics.conversion_rate_goal }}%
+                                    {% if metrics.goals_source == 'global' %}
+                                    <i class="bi bi-globe2 ms-1" title="Using global goal"></i>
+                                    {% elif metrics.goals_source == 'mixed' %}
+                                    <i class="bi bi-diagram-3 ms-1" title="Using mixed goals"></i>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Cost -->
+                        <div class="col-md-2 col-sm-4">
+                            <div class="metric-card text-center">
+                                <div class="metric-value h4 mb-1">${{ metrics.cost|default:"0"|floatformat:0|intcomma }}</div>
+                                <div class="metric-label text-muted small">Spend</div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                    </div>
+                </div>
+                
+                <!-- Budget Progress Bar -->
+                <div class="client-budget-bar bg-white border-start border-end border-bottom rounded-bottom">
+                    <div class="budget-container p-3" id="budget-container-{{ client.id }}">
+                        <!-- Budget content will be loaded by JavaScript -->
+                        <div class="budget-loading text-center text-muted">
+                            <i class="bi bi-hourglass-split me-1"></i>Loading budget info...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- No Clients State -->
+        <div class="text-center py-5">
+            <i class="bi bi-person-plus" style="font-size: 3rem; color: #8a93a2;"></i>
+            <h4 class="mt-3">No Clients Yet</h4>
+            <p class="text-muted">Add your first client to start tracking Google Ads performance.</p>
+            <a href="{% url 'create_client' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Add Your First Client
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+
+{% else %}
+<div class="card text-center">
+    <div class="card-body py-5">
+        <i class="bi bi-building" style="font-size: 3rem; color: #8a93a2;"></i>
+        <h5 class="mt-3">Please Log In</h5>
+        <p class="text-medium-emphasis">You need to log in to access your tenants.</p>
+        <a href="{% url 'login' %}" class="btn btn-primary mt-2">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Log In
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Archived Clients Modal -->
+<div class="modal fade" id="archivedClientsModal" tabindex="-1" aria-labelledby="archivedClientsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="archivedClientsModalLabel">
+                    <i class="bi bi-archive me-2"></i> Archived Clients
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    This is a list of all clients that have been archived. You can restore clients to make them active again.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Client Name</th>
+                                <th>Created</th>
+                                <th>Archived</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Content will be loaded dynamically via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Goal Setting Modal -->
+<div class="modal" id="performanceGoalModal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="performanceGoalModalLabel">
+                    <i class="bi bi-target me-2"></i> Set Performance Goals
+                </h5>
+                <button type="button" class="btn-close modal-close" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Goal Mode Selection -->
+                <div class="mb-4">
+                    <h6>Goal Application Mode</h6>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="goalMode" id="globalGoalMode" value="global">
+                        <label class="form-check-label" for="globalGoalMode">
+                            <i class="bi bi-globe2 me-1"></i>Global Goals
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="goalMode" id="clientGoalMode" value="client_specific">
+                        <label class="form-check-label" for="clientGoalMode">
+                            <i class="bi bi-person me-1"></i>Client Specific
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="goalMode" id="mixedGoalMode" value="mixed" checked>
+                        <label class="form-check-label" for="mixedGoalMode">
+                            <i class="bi bi-diagram-3 me-1"></i>Smart Mix
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span id="goalModeDescription">Smart Mix uses client-specific goals where set, with global goals as fallback.</span>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="ctrGoalInput" class="form-label">CTR Goal (%)</label>
+                        <input type="number" class="form-control" id="ctrGoalInput" 
+                               placeholder="e.g., 2.5" step="0.01" min="0" max="100">
+                        <div class="form-text">Target click-through rate percentage</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="conversionRateGoalInput" class="form-label">Conversion Rate Goal (%)</label>
+                        <input type="number" class="form-control" id="conversionRateGoalInput" 
+                               placeholder="e.g., 3.25" step="0.01" min="0" max="100">
+                        <div class="form-text">Target conversion rate percentage</div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label for="costPerClickGoalInput" class="form-label">Cost Per Click Goal ($)</label>
+                        <input type="number" class="form-control" id="costPerClickGoalInput" 
+                               placeholder="e.g., 1.50" step="0.01" min="0">
+                        <div class="form-text">Target cost per click (lower is better)</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="costPerConversionGoalInput" class="form-label">Cost Per Conversion Goal ($)</label>
+                        <input type="number" class="form-control" id="costPerConversionGoalInput" 
+                               placeholder="e.g., 25.00" step="0.01" min="0">
+                        <div class="form-text">Target cost per conversion (lower is better)</div>
+                    </div>
+                </div>
+                
+                <!-- Client-specific section (hidden by default) -->
+                <div id="clientSpecificSection" style="display: none;">
+                    <hr class="my-4">
+                    <h6>Client-Specific Goals</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="useGlobalGoalsToggle">
+                        <label class="form-check-label" for="useGlobalGoalsToggle">
+                            Use global goals for this client (override client-specific settings)
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>Performance Color Scale:</h6>
+                    <div class="row">
+                        <div class="col-3">
+                            <div class="p-2 text-center" style="background-color: #d4edda; border-left: 4px solid #28a745;">
+                                <small><strong>Excellent</strong><br>≥120% of goal</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 text-center" style="background-color: #e8f5e8; border-left: 4px solid #20c997;">
+                                <small><strong>Good</strong><br>100-119% of goal</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 text-center" style="background-color: #fff3cd; border-left: 4px solid #ffc107;">
+                                <small><strong>Warning</strong><br>80-99% of goal</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 text-center" style="background-color: #f8d7da; border-left: 4px solid #dc3545;">
+                                <small><strong>Poor</strong><br>&lt;80% of goal</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveGoalSettings">Apply Goals</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Column Settings Modal -->
+<div class="modal" id="columnSettingsModal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="columnSettingsModalLabel">
+                    <i class="bi bi-gear me-2"></i> Customize Columns
+                </h5>
+                <button type="button" class="btn-close modal-close" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    Select which metrics columns you want to display in the clients table.
+                </p>
+                <div class="d-flex flex-column gap-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input column-checkbox" type="checkbox" id="column-impressions" data-column="impressions" checked>
+                        <label class="form-check-label" for="column-impressions">Impressions</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input column-checkbox" type="checkbox" id="column-clicks" data-column="clicks" checked>
+                        <label class="form-check-label" for="column-clicks">Clicks</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input column-checkbox" type="checkbox" id="column-ctr" data-column="ctr" checked>
+                        <label class="form-check-label" for="column-ctr">CTR (Click Through Rate)</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input column-checkbox" type="checkbox" id="column-conversions" data-column="conversions" checked>
+                        <label class="form-check-label" for="column-conversions">Conversions</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input column-checkbox" type="checkbox" id="column-conversion_rate" data-column="conversion_rate" checked>
+                        <label class="form-check-label" for="column-conversion_rate">Conversion Rate</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveColumnSettings">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Modal Styling */
+    .modal-open {
+        overflow: hidden;
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1050;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        outline: 0;
+        display: none;
+    }
+    
+    .modal.show {
+        display: block;
+    }
+    
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background-color: #000;
+        opacity: 0.5;
+    }
+    
+    .modal-dialog {
+        position: relative;
+        width: auto;
+        margin: 1.75rem auto;
+        max-width: 500px;
+        pointer-events: none;
+    }
+    
+    .modal-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        pointer-events: auto;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 0.3rem;
+        outline: 0;
+    }
+    
+    .modal-header {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+        border-top-left-radius: calc(0.3rem - 1px);
+        border-top-right-radius: calc(0.3rem - 1px);
+    }
+    
+    .modal-body {
+        position: relative;
+        flex: 1 1 auto;
+        padding: 1rem;
+    }
+    
+    .modal-footer {
+        display: flex;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 0.75rem;
+        border-top: 1px solid #dee2e6;
+        border-bottom-right-radius: calc(0.3rem - 1px);
+        border-bottom-left-radius: calc(0.3rem - 1px);
+    }
+    
+    /* Better styling for form switches */
+    .form-check-input.column-checkbox {
+        width: 2.5rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+    
+    /* Client Card Styles */
+    .client-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.375rem;
+        transition: box-shadow 0.15s ease-in-out;
+        background: #fff;
+    }
+    
+    .client-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .client-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .client-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.375rem;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .client-logo-placeholder {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .client-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #212529;
+        margin: 0;
+    }
+    
+    .client-info {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin: 0;
+    }
+    
+    .client-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .metric-item {
+        text-align: center;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 0.25rem;
+        border: 1px solid #e9ecef;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #212529;
+        margin: 0;
+        line-height: 1.2;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0.25rem 0 0 0;
+    }
+    
+    .client-budget-bar {
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .budget-progress {
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .budget-progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .budget-progress-fill.on-pace {
+        background: linear-gradient(90deg, #28a745, #20c997);
+    }
+    
+    .budget-progress-fill.behind-pace {
+        background: linear-gradient(90deg, #ffc107, #fd7e14);
+    }
+    
+    .budget-progress-fill.over-pace {
+        background: linear-gradient(90deg, #dc3545, #e74c3c);
+    }
+    
+    .btn-xs {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    
+    .budget-pacing-info {
+        font-size: 0.75rem;
+    }
+    
+    .date-range-info {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    
+    /* Fix dropdown positioning */
+    .dropdown-menu-end {
+        --bs-position: end;
+        right: 0;
+        left: auto;
+    }
+    
+    .dropdown-menu {
+        min-width: 160px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.375rem;
+    }
+    
+    .freshness-indicator {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .freshness-fresh {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .freshness-stale {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .freshness-very-stale {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .client-actions .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+        .client-metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+        
+        .client-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.75rem;
+        }
+        
+        .client-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+    
+    .form-check-input.column-checkbox:checked {
+        background-color: #3399ff;
+        border-color: #3399ff;
+    }
+    
+    .form-check-label {
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    /* Loading overlay styles */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+    }
+    
+    .spinner-container {
+        text-align: center;
+    }
+    
+    /* Spinning animation for refresh icon */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .spin {
+        display: inline-block;
+        animation: spin 1s infinite linear;
+    }
+    
+    /* Make the table container position relative for loading overlay */
+    .table-responsive {
+        position: relative;
+        min-height: 200px;
+    }
+    
+    /* Style for different toast types */
+    .toast.error .toast-header {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .toast.success .toast-header {
+        background-color: #d4edda;
+        color: #155724;
+    }
+</style>
+
+<!-- Toast container for notifications -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <!-- Toasts will be inserted here dynamically -->
+</div>
+
+<style>
+    /* Toast styling */
+    .toast-container {
+        z-index: 1060; /* Higher than modal backdrop */
+    }
+    .toast {
+        min-width: 250px;
+        background-color: #fff;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border-radius: 0.25rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .toast.show {
+        opacity: 1;
+    }
+    
+    /* Heatmap styles for performance metrics */
+    .heatmap-cell {
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    
+    .performance-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .metric-value {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .goal-indicator {
+        color: #6c757d;
+        font-size: 0.75rem;
+        margin-top: 2px;
+    }
+    
+    /* Performance status colors */
+    .heatmap-cell[data-status="excellent"] {
+        background-color: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+    
+    .heatmap-cell[data-status="good"] {
+        background-color: #e8f5e8;
+        border-left: 4px solid #20c997;
+    }
+    
+    .heatmap-cell[data-status="warning"] {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    
+    .heatmap-cell[data-status="poor"] {
+        background-color: #f8d7da;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .heatmap-cell[data-status="no_goal"] {
+        background-color: #f8f9fa;
+        border-left: 4px solid #6c757d;
+    }
+    
+    /* Hover effects for heatmap cells */
+    .heatmap-cell:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Goal setting button styling */
+    .btn-outline-primary.btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        font-weight: 500;
+        border-width: 1px;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-outline-primary.btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-outline-primary.btn-sm i {
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+{% block extra_js %}
+<!-- Custom JavaScript -->
+<script>
+    // Define showGoalModal function globally before DOMContentLoaded
+    window.showGoalModal = function(goalType) {
+      console.log('showGoalModal called with goalType:', goalType);
+      const modal = document.getElementById('performanceGoalModal');
+      const titleElement = document.querySelector('#performanceGoalModalLabel');
+      
+      if (!modal) {
+        console.error('Performance goal modal not found!');
+        alert('Error: Performance goal modal not found in DOM');
+        return;
+      }
+      
+      if (!titleElement) {
+        console.error('Performance goal modal title element not found!');
+        alert('Error: Modal title element not found');
+        return;
+      }
+      
+      console.log('Modal and title elements found, updating title...');
+      
+      // Update modal title based on goal type
+      if (goalType === 'ctr') {
+        titleElement.innerHTML = '<i class="bi bi-target me-2"></i> Set CTR Goals';
+      } else if (goalType === 'conversion_rate') {
+        titleElement.innerHTML = '<i class="bi bi-target me-2"></i> Set Conversion Rate Goals';
+      } else {
+        titleElement.innerHTML = '<i class="bi bi-target me-2"></i> Set Performance Goals';
+      }
+      
+      console.log('Showing modal...');
+      
+      // Remove existing backdrop if any
+      const existingBackdrop = document.querySelector('.modal-backdrop');
+      if (existingBackdrop) {
+        existingBackdrop.remove();
+      }
+      
+      // Show modal manually with higher z-index
+      document.body.classList.add('modal-open');
+      modal.style.display = 'block';
+      modal.style.zIndex = '1055';
+      modal.classList.add('show');
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      backdrop.style.zIndex = '1050';
+      document.body.appendChild(backdrop);
+      
+      console.log('Modal should be visible now');
+      console.log('Modal display style:', modal.style.display);
+      console.log('Modal classes:', modal.className);
+      
+      // Add click handler for backdrop
+      backdrop.addEventListener('click', function() {
+        window.hideGoalModal();
+      });
+    };
+    
+    // Function to hide goal modal
+    window.hideGoalModal = function() {
+      const modal = document.getElementById('performanceGoalModal');
+      const backdrop = document.querySelector('.modal-backdrop');
+      
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+      }
+      
+      if (backdrop) {
+        backdrop.remove();
+      }
+      
+      document.body.classList.remove('modal-open');
+    };
+    
+    // Debug function (can be removed in production)
+    window.debugModal = function() {
+      const modal = document.getElementById('performanceGoalModal');
+      console.log('Modal element:', modal);
+      console.log('Modal display:', modal ? modal.style.display : 'not found');
+      console.log('Modal classes:', modal ? modal.className : 'not found');
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Initializing action buttons directly in home.html');
+      
+      // Initialize action buttons
+      const actionButtons = document.querySelectorAll('button[data-client-id]');
+      console.log(`Found ${actionButtons.length} action buttons`);
+      
+      actionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Get client ID from button
+          const clientId = this.getAttribute('data-client-id');
+          console.log(`Action button clicked for client ID: ${clientId}`);
+          
+          // Create dropdown menu
+          const menu = document.createElement('div');
+          menu.className = 'action-menu';
+          menu.style.position = 'absolute';
+          menu.style.backgroundColor = '#fff';
+          menu.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+          menu.style.borderRadius = '4px';
+          menu.style.padding = '8px 0';
+          menu.style.zIndex = '10000';
+          menu.style.minWidth = '160px';
+          
+          // Common styles for links
+          const linkStyle = 'display: block; padding: 8px 16px; text-decoration: none; color: #333;';
+          
+          // Add menu items
+          menu.innerHTML = `
+            <a href="/client/${clientId}/" style="${linkStyle}">
+              <i class="bi bi-eye me-2"></i>View Details
+            </a>
+            <a href="/client/${clientId}/edit/" style="${linkStyle}">
+              <i class="bi bi-pencil me-2"></i>Edit
+            </a>
+            <div style="height: 1px; background-color: #e5e5e5; margin: 8px 0;"></div>
+            <a href="/client/${clientId}/archive/" style="${linkStyle} color: #dc3545;" 
+               onclick="return confirm('Are you sure you want to archive this client?');">
+              <i class="bi bi-trash me-2"></i>Archive
+            </a>
+          `;
+          
+          // Add hover effects
+          menu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('mouseover', function() {
+              this.style.backgroundColor = '#f5f5f5';
+            });
+            link.addEventListener('mouseout', function() {
+              this.style.backgroundColor = '';
+            });
+          });
+          
+          // Position the menu
+          const rect = this.getBoundingClientRect();
+          menu.style.top = (rect.bottom + window.scrollY) + 'px';
+          menu.style.left = (rect.left + window.scrollX) + 'px';
+          
+          // Remove any existing menus
+          document.querySelectorAll('.action-menu').forEach(m => m.remove());
+          
+          // Add to document
+          document.body.appendChild(menu);
+          
+          // Close when clicking outside
+          const closeMenu = function(event) {
+            if (!menu.contains(event.target) && event.target !== button) {
+              document.body.removeChild(menu);
+              document.removeEventListener('click', closeMenu);
+            }
+          };
+          
+          setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+          }, 0);
+        });
+      });
+    });
+  </script>
+  
+
+<script src="{% static 'website/js/home.js' %}"></script>
+<script src="{% static 'website/js/archived-clients.js' %}"></script>
+
+<!-- Inline script for column customization and data refresh -->
+<script>
+  // Global function for refreshing page data - can be called from button onclick
+  function refreshPageData() {
+    console.log('Refreshing page data with current date range:', currentDateRange);
+    
+    // Show loading indicator
+    const button = document.getElementById('refreshDataBtn');
+    if (button) {
+      const originalContent = button.innerHTML;
+      button.innerHTML = `<i class="bi bi-arrow-repeat spin me-1"></i> Loading...`;
+      button.disabled = true;
+    }
+    
+    // Add loading overlay to table
+    const tableContainer = document.querySelector('.table-responsive');
+    if (tableContainer) {
+      const loadingOverlay = document.createElement('div');
+      loadingOverlay.className = 'loading-overlay';
+      loadingOverlay.innerHTML = `
+        <div class="spinner-container">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Refreshing data...</p>
+        </div>
+      `;
+      tableContainer.appendChild(loadingOverlay);
+    }
+    
+    // Reload page with current date range parameters
+    const params = new URLSearchParams(getDateRangeParams());
+    const newUrl = window.location.pathname + '?' + params.toString();
+    window.location.href = newUrl;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Home page scripts loaded');
+    
+    // Column Settings Button
+    const columnSettingsBtn = document.getElementById('columnSettingsBtn');
+    const columnSettingsModal = document.getElementById('columnSettingsModal');
+    
+    if (columnSettingsBtn && columnSettingsModal) {
+      console.log('Column settings button and modal found');
+      
+      // Modal is now handled via inline onclick, but we still set up event handlers for other buttons
+      
+      // Close modal when close buttons are clicked
+      const closeButtons = columnSettingsModal.querySelectorAll('[data-coreui-dismiss="modal"], .modal-close');
+      closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          window.hideModal(columnSettingsModal);
+        });
+      });
+      
+      // Save settings
+      const saveButton = document.getElementById('saveColumnSettings');
+      if (saveButton) {
+        saveButton.addEventListener('click', function() {
+          saveColumnPreferences();
+          showToast('Settings Saved', 'Your column preferences have been saved.');
+          window.hideModal(columnSettingsModal);
+        });
+      }
+      
+      // Load saved preferences when page loads
+      loadColumnPreferences();
+      applyColumnPreferences();
+    } else {
+      console.error('Column settings button or modal not found!');
+    }
+    
+    // Function to show modal
+    window.showModal = function(modal) {
+      document.body.classList.add('modal-open');
+      modal.style.display = 'block';
+      modal.classList.add('show');
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      document.body.appendChild(backdrop);
+    }
+    
+    // Function to hide modal
+    window.hideModal = function(modal) {
+      document.body.classList.remove('modal-open');
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+      
+      // Remove backdrop
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.remove();
+      }
+    }
+    
+    // Function to save column preferences
+    function saveColumnPreferences() {
+      const checkboxes = document.querySelectorAll('.column-checkbox');
+      const preferences = {};
+      
+      checkboxes.forEach(checkbox => {
+        const column = checkbox.getAttribute('data-column');
+        preferences[column] = checkbox.checked;
+      });
+      
+      localStorage.setItem('clientTableColumns', JSON.stringify(preferences));
+      applyColumnPreferences();
+    }
+    
+    // Function to load column preferences
+    function loadColumnPreferences() {
+      const storedPreferences = localStorage.getItem('clientTableColumns');
+      if (!storedPreferences) return;
+      
+      const preferences = JSON.parse(storedPreferences);
+      const checkboxes = document.querySelectorAll('.column-checkbox');
+      
+      checkboxes.forEach(checkbox => {
+        const column = checkbox.getAttribute('data-column');
+        if (preferences.hasOwnProperty(column)) {
+          checkbox.checked = preferences[column];
+        }
+      });
+    }
+    
+    // Function to apply column preferences
+    function applyColumnPreferences() {
+      const storedPreferences = localStorage.getItem('clientTableColumns');
+      if (!storedPreferences) return;
+      
+      const preferences = JSON.parse(storedPreferences);
+      
+      Object.entries(preferences).forEach(([column, isVisible]) => {
+        const tableHeaders = document.querySelectorAll(`th.column-toggle[data-column="${column}"]`);
+        const tableData = document.querySelectorAll(`td.column-data[data-column="${column}"]`);
+        
+        tableHeaders.forEach(header => {
+          header.style.display = isVisible ? '' : 'none';
+        });
+        
+        tableData.forEach(cell => {
+          cell.style.display = isVisible ? '' : 'none';
+        });
+      });
+    }
+    
+    // Function to show toast with optional type (success, error, etc.)
+    function showToast(title, message, type = 'success') {
+      const toastContainer = document.querySelector('.toast-container');
+      if (!toastContainer) return;
+      
+      const toast = document.createElement('div');
+      toast.className = `toast show ${type}`;
+      toast.setAttribute('role', 'alert');
+      toast.setAttribute('aria-live', 'assertive');
+      toast.setAttribute('aria-atomic', 'true');
+      
+      // Icon based on type
+      let icon = 'check-circle-fill';
+      if (type === 'error') {
+        icon = 'exclamation-triangle-fill';
+      } else if (type === 'warning') {
+        icon = 'exclamation-circle-fill';
+      } else if (type === 'info') {
+        icon = 'info-circle-fill';
+      }
+      
+      toast.innerHTML = `
+        <div class="toast-header">
+          <i class="bi bi-${icon} me-2"></i>
+          <strong class="me-auto">${title}</strong>
+          <button type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">${message}</div>
+      `;
+      
+      toastContainer.appendChild(toast);
+      
+      // Add click handler to close button
+      const closeBtn = toast.querySelector('.btn-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+          toast.remove();
+        });
+      }
+      
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 3000);
+    }
+    
+    // Performance Goal Modal Functions - already defined globally above
+    
+    // Handle goal setting modal close buttons
+    const goalModal = document.getElementById('performanceGoalModal');
+    if (goalModal) {
+      const closeButtons = goalModal.querySelectorAll('.modal-close');
+      closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          window.hideGoalModal();
+        });
+      });
+      
+      // Handle save button
+      const saveButton = document.getElementById('saveGoalSettings');
+      if (saveButton) {
+        saveButton.addEventListener('click', function() {
+          savePerformanceGoals();
+        });
+      }
+    }
+    
+    // Function to save performance goals for all clients
+    function savePerformanceGoals() {
+      const ctrGoal = document.getElementById('ctrGoalInput').value;
+      const conversionRateGoal = document.getElementById('conversionRateGoalInput').value;
+      
+      if (!ctrGoal && !conversionRateGoal) {
+        showToast('No Goals Set', 'Please enter at least one goal value.', 'warning');
+        return;
+      }
+      
+      // Get all client IDs from the table
+      const clientIds = [];
+      document.querySelectorAll('[data-client-id]').forEach(element => {
+        const clientId = element.getAttribute('data-client-id');
+        if (clientId && !clientIds.includes(clientId)) {
+          clientIds.push(clientId);
+        }
+      });
+      
+      if (clientIds.length === 0) {
+        showToast('No Clients', 'No clients found to set goals for.', 'warning');
+        return;
+      }
+      
+      // Show loading state
+      const saveButton = document.getElementById('saveGoalSettings');
+      const originalText = saveButton.textContent;
+      saveButton.textContent = 'Saving...';
+      saveButton.disabled = true;
+      
+      // Save goals for each client
+      let completedRequests = 0;
+      let successfulRequests = 0;
+      
+      clientIds.forEach(clientId => {
+        const goalData = {};
+        if (ctrGoal) goalData.ctr_goal = parseFloat(ctrGoal);
+        if (conversionRateGoal) goalData.conversion_rate_goal = parseFloat(conversionRateGoal);
+        
+        fetch(`/api/client/${clientId}/performance-goals/set/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify(goalData)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            successfulRequests++;
+          }
+          completedRequests++;
+          
+          if (completedRequests === clientIds.length) {
+            // All requests completed
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
+            
+            if (successfulRequests === clientIds.length) {
+              showToast('Goals Saved', `Performance goals set for ${successfulRequests} clients.`, 'success');
+              window.hideGoalModal();
+              
+              // Refresh the page to show updated heatmap
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            } else {
+              showToast('Partial Success', `Goals set for ${successfulRequests} of ${clientIds.length} clients.`, 'warning');
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error saving goals:', error);
+          completedRequests++;
+          
+          if (completedRequests === clientIds.length) {
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
+            showToast('Error', 'Failed to save performance goals.', 'error');
+          }
+        });
+      });
+    }
+    
+    // Function to get CSRF token
+    function getCsrfToken() {
+      const csrfCookie = document.cookie
+        .split(';')
+        .map(cookie => cookie.trim())
+        .find(cookie => cookie.startsWith('csrftoken='));
+      
+      if (csrfCookie) {
+        return csrfCookie.split('=')[1];
+      }
+      
+      const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return csrfInput ? csrfInput.value : '';
+    }
+    
+    // Load data freshness info on page load
+    loadDataFreshnessInfo();
+  });
+  
+  // Global function for bulk refreshing Google Ads data
+  function bulkRefreshGoogleAdsData(forceRefresh = false) {
+    console.log('Starting background Google Ads data refresh...', { forceRefresh });
+    console.log('Current timestamp:', new Date().toISOString());
+    
+    // Update button states
+    const refreshButton = document.getElementById('refreshDropdown');
+    const refreshButtonText = document.getElementById('refreshButtonText');
+    const freshnessText = document.getElementById('freshnessText');
+    
+    if (refreshButton && refreshButtonText) {
+      refreshButton.disabled = true;
+      refreshButtonText.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i> Starting...';
+    }
+    
+    if (freshnessText) {
+      freshnessText.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i> <span class="text-primary">Starting background refresh...</span>';
+    }
+    
+    // Show toast notification
+    const refreshType = forceRefresh ? 'Force refresh' : 'Smart refresh';
+    showToast('Google Ads Refresh', `Starting ${refreshType} in the background. You can continue browsing while it runs.`, 'info');
+    
+    // Make API call to start background task
+    const formData = new FormData();
+    formData.append('force_refresh', forceRefresh);
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    
+    fetch('{% url "bulk_refresh_google_ads_data" %}', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: formData
+    })
+    .then(response => {
+      console.log('Bulk refresh HTTP status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Bulk refresh response:', data);
+      
+      // Reset button states
+      if (refreshButton && refreshButtonText) {
+        refreshButton.disabled = false;
+        refreshButtonText.innerHTML = 'Refresh';
+      }
+      
+      if (data.success) {
+        // Background task started successfully
+        const taskId = data.task_id;
+        const estimatedDuration = data.estimated_duration || 300; // 5 minutes default
+        
+        // Update UI to show background processing
+        if (refreshButton && refreshButtonText) {
+          refreshButton.disabled = false;
+          refreshButtonText.innerHTML = 'Refresh';
+        }
+        
+        if (freshnessText) {
+          freshnessText.innerHTML = '<i class="bi bi-gear spin me-1 text-info"></i> <span class="text-info">Running in background...</span>';
+        }
+        
+        showToast('Background Task Started', `Refresh is running in the background. Estimated time: ${Math.ceil(estimatedDuration/60)} minutes.`, 'success');
+        
+        // Start polling for task status
+        pollTaskStatus(taskId, estimatedDuration);
+        
+      } else {
+        // Server returned success: false
+        console.error('Server error:', data.message);
+        showToast('Refresh Error', data.message, 'error');
+        
+        if (freshnessText) {
+          freshnessText.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-danger"></i> <span class="text-danger">Refresh failed</span>';
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Bulk refresh error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Reset button states
+      if (refreshButton && refreshButtonText) {
+        refreshButton.disabled = false;
+        refreshButtonText.innerHTML = 'Refresh';
+      }
+      
+      // Determine error type and show appropriate message
+      let errorMessage = 'Failed to refresh Google Ads data. Please try again.';
+      let errorType = 'error';
+      
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Network error: Please check your connection and try again.';
+      } else if (error.name === 'SyntaxError') {
+        errorMessage = 'Server response error: The refresh may still be running in the background.';
+        errorType = 'warning';
+      } else if (error.message.includes('HTTP')) {
+        errorMessage = `Server error: ${error.message}. Please try again.`;
+      }
+      
+      showToast('Refresh Error', errorMessage, errorType);
+      
+      // Set appropriate freshness indicator
+      if (freshnessText) {
+        if (errorType === 'warning') {
+          freshnessText.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i> <span class="text-warning">Task start failed</span>';
+        } else {
+          freshnessText.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-danger"></i> <span class="text-danger">Task start failed</span>';
+        }
+      }
+    });
+  }
+  
+  // Function to load and display data freshness information
+  function loadDataFreshnessInfo() {
+    const freshnessText = document.getElementById('freshnessText');
+    
+    if (!freshnessText) return;
+    
+    // Show loading state
+    freshnessText.innerHTML = '<i class="bi bi-clock me-1"></i> <span class="text-muted">Checking data freshness...</span>';
+    
+    fetch('{% url "get_data_freshness_info" %}')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.freshness_info) {
+          const info = data.freshness_info;
+          updateFreshnessDisplay(info);
+        } else {
+          freshnessText.innerHTML = '<i class="bi bi-question-circle me-1 text-secondary"></i> <span class="text-secondary">Unable to check data freshness</span>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading freshness info:', error);
+        freshnessText.innerHTML = '<i class="bi bi-exclamation-triangle me-1 text-warning"></i> <span class="text-warning">Error checking freshness</span>';
+      });
+  }
+  
+  // Function to update the freshness display based on data
+  function updateFreshnessDisplay(info) {
+    const freshnessText = document.getElementById('freshnessText');
+    
+    if (!freshnessText || !info) return;
+    
+    const totalClients = info.total_clients;
+    const freshClients = info.clients_fresh;
+    const staleClients = info.clients_stale;
+    const veryStaleClients = info.clients_very_stale;
+    const neverSyncedClients = info.clients_never_synced;
+    
+    let iconClass = 'bi bi-check-circle';
+    let textClass = 'text-success';
+    let statusText = 'Data is fresh';
+    
+    if (neverSyncedClients > 0) {
+      iconClass = 'bi bi-exclamation-triangle';
+      textClass = 'text-danger';
+      statusText = `${neverSyncedClients} client(s) never synced`;
+    } else if (veryStaleClients > 0) {
+      iconClass = 'bi bi-exclamation-triangle';
+      textClass = 'text-danger';
+      statusText = `${veryStaleClients} client(s) have very stale data (>24h)`;
+    } else if (staleClients > 0) {
+      iconClass = 'bi bi-clock';
+      textClass = 'text-warning';
+      statusText = `${staleClients} client(s) have stale data (6-24h)`;
+    } else if (freshClients === totalClients && totalClients > 0) {
+      iconClass = 'bi bi-check-circle';
+      textClass = 'text-success';
+      statusText = 'All data is fresh (<6h)';
+    } else if (totalClients === 0) {
+      iconClass = 'bi bi-info-circle';
+      textClass = 'text-muted';
+      statusText = 'No client data found';
+    }
+    
+    // Add tooltip with detailed breakdown
+    const tooltip = `Fresh: ${freshClients}, Stale: ${staleClients}, Very Stale: ${veryStaleClients}, Never Synced: ${neverSyncedClients}`;
+    
+    freshnessText.innerHTML = `
+      <i class="${iconClass} me-1 ${textClass}"></i> 
+      <span class="${textClass}" title="${tooltip}" data-bs-toggle="tooltip">${statusText}</span>
+    `;
+    
+    // Initialize tooltip if Bootstrap is available
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+      new bootstrap.Tooltip(freshnessText.querySelector('[data-bs-toggle="tooltip"]'));
+    }
+  }
+  
+  // Helper function to get CSRF token (duplicate for global scope)
+  function getCsrfToken() {
+    const csrfCookie = document.cookie
+      .split(';')
+      .map(cookie => cookie.trim())
+      .find(cookie => cookie.startsWith('csrftoken='));
+    
+    if (csrfCookie) {
+      return csrfCookie.split('=')[1];
+    }
+    
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return csrfInput ? csrfInput.value : '';
+  }
+  
+  // Function to poll task status
+  function pollTaskStatus(taskId, estimatedDuration) {
+    console.log(`Starting task polling for ${taskId}`);
+    
+    let pollCount = 0;
+    const maxPolls = Math.ceil(estimatedDuration / 5) + 20; // Poll every 5 seconds, with buffer
+    
+    const pollInterval = setInterval(() => {
+      pollCount++;
+      
+      fetch(`/api/task-status/${taskId}/`, {
+        method: "GET",
+        headers: {
+          "X-CSRFToken": getCsrfToken()
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.task) {
+          const task = data.task;
+          console.log(`Task ${taskId} status:`, task.status, task.progress);
+          
+          updateTaskProgress(task);
+          
+          if (task.is_completed) {
+            clearInterval(pollInterval);
+            handleTaskCompletion(task);
+          }
+        } else {
+          console.error("Error polling task status:", data);
+        }
+      })
+      .catch(error => {
+        console.error("Error polling task:", error);
+      });
+      
+      // Stop polling after max attempts
+      if (pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        console.log("Task polling timeout reached");
+        const freshnessText = document.getElementById("freshnessText");
+        if (freshnessText) {
+          freshnessText.innerHTML = "<i class=\"bi bi-clock me-1 text-muted\"></i> <span class=\"text-muted\">Task may still be running...</span>";
+        }
+      }
+    }, 5000); // Poll every 5 seconds
+  }
+  
+  // Function to update task progress in UI
+  function updateTaskProgress(task) {
+    const freshnessText = document.getElementById("freshnessText");
+    if (!freshnessText) return;
+    
+    if (task.status === "running" && task.progress) {
+      const progress = task.progress;
+      let progressMessage = "Processing...";
+      
+      if (progress.message) {
+        progressMessage = progress.message;
+      } else if (progress.clients_processed && progress.total_clients) {
+        progressMessage = `${progress.clients_processed}/${progress.total_clients} clients processed`;
+      }
+      
+      freshnessText.innerHTML = `<i class="bi bi-gear spin me-1 text-info"></i> <span class="text-info">${progressMessage}</span>`;
+    }
+  }
+  
+  // Function to handle task completion
+  function handleTaskCompletion(task) {
+    const freshnessText = document.getElementById("freshnessText");
+    
+    if (task.status === "completed") {
+      const result = task.result || {};
+      const accountsSynced = result.total_accounts_synced || 0;
+      const clientsProcessed = result.clients_processed || 0;
+      const clientsSkipped = result.clients_skipped || 0;
+      
+      let message, toastType, statusHtml;
+      
+      if (accountsSynced > 0) {
+        message = `Successfully synced ${accountsSynced} accounts across ${clientsProcessed} clients`;
+        if (clientsSkipped > 0) {
+          message += ` (${clientsSkipped} clients skipped - fresh data)`;
+        }
+        toastType = "success";
+        statusHtml = "<i class=\"bi bi-check-circle me-1 text-success\"></i> <span class=\"text-success\">Data refreshed</span>";
+      } else if (clientsProcessed > 0) {
+        message = `Processed ${clientsProcessed} clients, but no accounts were synced. Check connections.`;
+        toastType = "warning";
+        statusHtml = "<i class=\"bi bi-exclamation-triangle me-1 text-warning\"></i> <span class=\"text-warning\">No accounts synced</span>";
+      } else if (clientsSkipped > 0) {
+        message = `All ${clientsSkipped} clients have fresh data (no sync needed)`;
+        toastType = "info";
+        statusHtml = "<i class=\"bi bi-check-circle me-1 text-success\"></i> <span class=\"text-success\">Data is fresh</span>";
+      } else {
+        message = "No active clients with Google Ads accounts found";
+        toastType = "info";
+        statusHtml = "<i class=\"bi bi-info-circle me-1 text-info\"></i> <span class=\"text-info\">No accounts found</span>";
+      }
+      
+      showToast("Refresh Complete", message, toastType);
+      
+      if (freshnessText) {
+        freshnessText.innerHTML = statusHtml;
+      }
+      
+      // Refresh page data
+      setTimeout(() => {
+        loadDataFreshnessInfo();
+        refreshPageData();
+      }, 2000);
+      
+    } else if (task.status === "failed") {
+      const errorMessage = task.error_message || "Unknown error occurred";
+      showToast("Refresh Failed", `Background task failed: ${errorMessage}`, "error");
+      
+      if (freshnessText) {
+        freshnessText.innerHTML = "<i class=\"bi bi-x-circle me-1 text-danger\"></i> <span class=\"text-danger\">Refresh failed</span>";
+      }
+    }
+  }
+  
+  // Function for force refresh
+  function forceRefreshGoogleAdsData() {
+    if (confirm("Force refresh will re-sync all data regardless of freshness. This may take longer. Continue?")) {
+      bulkRefreshGoogleAdsData(true);
+    }
+  }
+  
+  // Client card functions
+  function refreshClientData(clientId) {
+    const clientCard = document.querySelector(`[data-client-id="${clientId}"]`);
+    if (!clientCard) return;
+    
+    const refreshBtn = clientCard.querySelector('.client-refresh-btn');
+    const originalText = refreshBtn ? refreshBtn.innerHTML : '';
+    
+    // Update button state
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<i class="bi bi-arrow-repeat spin me-1"></i> Syncing...';
+    }
+    
+    // Show progress in freshness indicator
+    const freshnessIndicator = clientCard.querySelector('.client-freshness');
+    if (freshnessIndicator) {
+      freshnessIndicator.innerHTML = '<i class="bi bi-gear spin me-1"></i> Syncing...';
+      freshnessIndicator.className = 'client-freshness freshness-indicator text-info';
+    }
+    
+    // Make API call to sync this specific client
+    fetch(`/api/client/${clientId}/sync/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showToast('Client Sync', `Successfully synced ${data.accounts_synced || 0} accounts for this client`, 'success');
+        
+        // Update freshness indicator
+        if (freshnessIndicator) {
+          freshnessIndicator.innerHTML = '<i class="bi bi-check-circle me-1"></i> Just updated';
+          freshnessIndicator.className = 'client-freshness freshness-indicator freshness-fresh';
+        }
+        
+        // Refresh the client card data
+        setTimeout(() => {
+          location.reload(); // Simple refresh for now
+        }, 1500);
+        
+      } else {
+        showToast('Sync Error', data.message || 'Failed to sync client data', 'error');
+        
+        if (freshnessIndicator) {
+          freshnessIndicator.innerHTML = '<i class="bi bi-x-circle me-1"></i> Sync failed';
+          freshnessIndicator.className = 'client-freshness freshness-indicator text-danger';
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Client sync error:', error);
+      showToast('Sync Error', 'Network error occurred', 'error');
+      
+      if (freshnessIndicator) {
+        freshnessIndicator.innerHTML = '<i class="bi bi-x-circle me-1"></i> Sync failed';
+        freshnessIndicator.className = 'client-freshness freshness-indicator text-danger';
+      }
+    })
+    .finally(() => {
+      // Reset button state
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = originalText;
+      }
+    });
+  }
+  
+  function updateBudgetProgress(clientId, spent, budget) {
+    const clientCard = document.querySelector(`[data-client-id="${clientId}"]`);
+    if (!clientCard) return;
+    
+    const progressBar = clientCard.querySelector('.budget-progress-fill');
+    const budgetText = clientCard.querySelector('.budget-text');
+    
+    if (!progressBar || !budgetText) return;
+    
+    const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const currentDay = new Date().getDate();
+    const expectedPercentage = (currentDay / daysInMonth) * 100;
+    
+    // Update progress bar
+    progressBar.style.width = `${percentage}%`;
+    
+    // Determine pacing status
+    if (percentage <= expectedPercentage * 1.1) {
+      progressBar.className = 'budget-progress-fill on-pace';
+    } else if (percentage <= expectedPercentage * 1.3) {
+      progressBar.className = 'budget-progress-fill behind-pace';
+    } else {
+      progressBar.className = 'budget-progress-fill over-pace';
+    }
+    
+    // Update budget text
+    if (budget > 0) {
+      budgetText.innerHTML = `$${spent.toLocaleString()} / $${budget.toLocaleString()} (${percentage.toFixed(1)}%)`;
+    } else {
+      budgetText.innerHTML = '<button class="btn btn-sm btn-outline-primary" onclick="setBudget(' + clientId + ')">Set Budget</button>';
+    }
+  }
+  
+  function setBudget(clientId) {
+    // Create a more sophisticated budget setting form
+    const budgetAmount = prompt('Enter budget amount (USD):');
+    if (!budgetAmount || isNaN(budgetAmount) || budgetAmount <= 0) return;
+    
+    const frequency = prompt('Enter budget frequency (monthly, quarterly):', 'monthly');
+    if (!frequency) return;
+    
+    fetch(`/api/client/${clientId}/budget/set/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        budget: parseFloat(budgetAmount),
+        frequency: frequency.toLowerCase()
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showToast('Budget Set', data.message, 'success');
+        // Reload the budget for this client
+        loadClientBudget(clientId);
+      } else {
+        showToast('Error', data.error || 'Failed to set budget', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Budget setting error:', error);
+      showToast('Error', 'Network error occurred', 'error');
+    });
+  }
+  
+  function editBudget(clientId, currentAmount, currentFrequency) {
+    const newAmount = prompt(`Update budget amount (current: $${currentAmount}):`, currentAmount);
+    if (!newAmount || isNaN(newAmount) || newAmount <= 0) return;
+    
+    const newFrequency = prompt(`Update frequency (current: ${currentFrequency}):`, currentFrequency);
+    if (!newFrequency) return;
+    
+    fetch(`/api/client/${clientId}/budget/set/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        budget: parseFloat(newAmount),
+        frequency: newFrequency.toLowerCase()
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showToast('Budget Updated', data.message, 'success');
+        // Reload the budget for this client
+        loadClientBudget(clientId);
+      } else {
+        showToast('Error', data.error || 'Failed to update budget', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Budget update error:', error);
+      showToast('Error', 'Network error occurred', 'error');
+    });
+  }
+  
+  function formatDateRange(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  }
+  
+  function getClientFreshnessClass(hoursAge) {
+    if (hoursAge === null) return 'freshness-very-stale';
+    if (hoursAge < 6) return 'freshness-fresh';
+    if (hoursAge < 24) return 'freshness-stale';
+    return 'freshness-very-stale';
+  }
+  
+  function formatFreshnessText(hoursAge) {
+    if (hoursAge === null) return 'Never synced';
+    if (hoursAge < 1) return `${Math.round(hoursAge * 60)}m ago`;
+    if (hoursAge < 24) return `${Math.round(hoursAge)}h ago`;
+    return `${Math.round(hoursAge / 24)}d ago`;
+  }
+  
+  // Global date range state
+  let currentDateRange = {
+    type: 'last_30_days',
+    startDate: null,
+    endDate: null,
+    displayText: 'Last 30 days'
+  };
+  
+  // Initialize client cards on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap dropdowns if available
+    if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+      var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+      var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+        return new bootstrap.Dropdown(dropdownToggleEl);
+      });
+    } else {
+      // Fallback for dropdowns if Bootstrap is not available
+      console.warn('Bootstrap not available, using fallback dropdown functionality');
+      initializeFallbackDropdowns();
+    }
+    
+    // Initialize date range selector
+    initializeDateRangeSelector();
+    
+    // Initialize current date range
+    updateDateRange();
+    
+    // Load client freshness data
+    loadClientFreshness();
+    
+    // Load budget data for all clients
+    loadClientBudgets();
+    
+    // Initialize column settings
+    initializeColumnSettings();
+    
+    // Initialize goal mode functionality
+    initializeGoalMode();
+  });
+  
+  // Fallback dropdown functionality
+  function initializeFallbackDropdowns() {
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Close all other dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+          if (menu !== this.nextElementSibling) {
+            menu.style.display = 'none';
+          }
+        });
+        
+        // Toggle this dropdown
+        const menu = this.nextElementSibling;
+        if (menu && menu.classList.contains('dropdown-menu')) {
+          menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+      });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
+      });
+    });
+  }
+  
+  // Function to load client freshness data
+  function loadClientFreshness() {
+    fetch('{% url "get_data_freshness_info" %}')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.freshness_info && data.freshness_info.client_details) {
+          data.freshness_info.client_details.forEach(clientInfo => {
+            const freshnessElement = document.getElementById(`client-freshness-${clientInfo.client_id}`);
+            if (freshnessElement) {
+              const indicator = freshnessElement.querySelector('.freshness-indicator');
+              if (indicator) {
+                const freshnessClass = getClientFreshnessClass(clientInfo.hours_since_sync);
+                const freshnessText = formatFreshnessText(clientInfo.hours_since_sync);
+                
+                indicator.textContent = freshnessText;
+                indicator.className = `freshness-indicator ${freshnessClass}`;
+              }
+            }
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error loading client freshness:', error);
+        // Set fallback text for all freshness indicators
+        document.querySelectorAll('.freshness-indicator').forEach(indicator => {
+          indicator.textContent = 'Unable to check';
+          indicator.className = 'freshness-indicator text-muted';
+        });
+      });
+  }
+  
+  // Function to load budget data for all clients
+  function loadClientBudgets() {
+    document.querySelectorAll('.budget-container').forEach(container => {
+      const clientId = container.id.replace('budget-container-', '');
+      loadClientBudget(clientId);
+    });
+  }
+  
+  // Function to load budget for a specific client
+  function loadClientBudget(clientId) {
+    const container = document.getElementById(`budget-container-${clientId}`);
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = `
+      <div class="budget-loading text-center text-muted">
+        <i class="bi bi-hourglass-split me-1"></i>Loading budget info...
+      </div>
+    `;
+    
+    // Fetch budget data from API with date range parameters
+    const params = new URLSearchParams(getDateRangeParams());
+    fetch(`/api/client/${clientId}/budget/?${params}`, {
+      method: 'GET',
+      headers: {
+        'X-CSRFToken': getCsrfToken()
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        if (data.has_budget) {
+          // Display existing budget with progress for date range
+          const budget = data.budget;
+          const dateRange = data.date_range;
+          const progressWidth = Math.min(budget.spend_percentage, 100);
+          const pacingClass = budget.pacing_status;
+          
+          // Create budget details tooltip
+          let budgetDetailsTooltip = '';
+          if (budget.budget_details && budget.budget_details.length > 1) {
+            budgetDetailsTooltip = budget.budget_details.map(detail => 
+              `${detail.budget_name}: $${detail.prorated_budget.toLocaleString()} (${detail.overlap_start} to ${detail.overlap_end})`
+            ).join('\n');
+          }
+          
+          container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="budget-info flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <h6 class="mb-0" title="${budgetDetailsTooltip}">
+                    Budget for Selected Range
+                    ${budget.budget_details && budget.budget_details.length > 1 ? 
+                      `<i class="bi bi-info-circle ms-1 text-muted" style="font-size: 0.8rem;"></i>` : ''}
+                  </h6>
+                  <small class="text-muted">${formatDateRange(dateRange.start_date, dateRange.end_date)}</small>
+                </div>
+                <div class="budget-text mb-2">
+                  <strong>$${budget.current_spend.toLocaleString()} / $${budget.total_budget_amount.toLocaleString()}</strong>
+                  <span class="text-muted">(${budget.spend_percentage}%)</span>
+                  <button class="btn btn-xs btn-outline-secondary ms-2" onclick="manageBudgets(${clientId})">
+                    <i class="bi bi-gear"></i>
+                  </button>
+                </div>
+                <div class="budget-progress">
+                  <div class="budget-progress-fill ${pacingClass}" style="width: ${progressWidth}%;"></div>
+                </div>
+                <div class="budget-pacing-info mt-1">
+                  <small class="text-muted">
+                    Expected: $${budget.expected_spend.toLocaleString()} (${budget.expected_percentage}%)
+                    ${budget.budget_details && budget.budget_details.length > 1 ? 
+                      `• ${budget.budget_details.length} budget periods` : ''}
+                  </small>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          // No budget - show set budget button
+          container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="budget-info">
+                <h6 class="mb-1">Budget</h6>
+                <div class="budget-text">
+                  <button class="btn btn-sm btn-outline-primary" onclick="setBudget(${clientId})">
+                    <i class="bi bi-plus-circle me-1"></i>Set Budget
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="budget-progress mt-2">
+              <div class="budget-progress-fill" style="width: 0%;"></div>
+            </div>
+          `;
+        }
+      } else {
+        // Error loading budget
+        container.innerHTML = `
+          <div class="budget-error text-center text-muted">
+            <i class="bi bi-exclamation-triangle me-1"></i>Unable to load budget
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error loading budget:', error);
+      container.innerHTML = `
+        <div class="budget-error text-center text-muted">
+          <i class="bi bi-exclamation-triangle me-1"></i>Error loading budget
+        </div>
+      `;
+    });
+  }
+  
+  // Function to initialize column settings
+  function initializeColumnSettings() {
+    const customizeBtn = document.getElementById('customizeColumns');
+    if (customizeBtn) {
+      customizeBtn.addEventListener('click', function() {
+        showColumnModal();
+      });
+    }
+  }
+  
+  // Function to show column settings modal
+  function showColumnModal() {
+    const modal = document.getElementById('columnSettingsModal');
+    if (!modal) {
+      console.error('Column settings modal not found');
+      return;
+    }
+    
+    // Remove existing backdrop if any
+    const existingBackdrop = document.querySelector('.modal-backdrop');
+    if (existingBackdrop) {
+      existingBackdrop.remove();
+    }
+    
+    // Show modal
+    document.body.classList.add('modal-open');
+    modal.style.display = 'block';
+    modal.style.zIndex = '1055';
+    modal.classList.add('show');
+    
+    // Add backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1050';
+    document.body.appendChild(backdrop);
+    
+    // Add click handler for backdrop
+    backdrop.addEventListener('click', function() {
+      hideColumnModal();
+    });
+    
+    // Add click handlers for close buttons
+    modal.querySelectorAll('.modal-close').forEach(closeBtn => {
+      closeBtn.addEventListener('click', function() {
+        hideColumnModal();
+      });
+    });
+  }
+  
+  // Function to hide column settings modal
+  function hideColumnModal() {
+    const modal = document.getElementById('columnSettingsModal');
+    const backdrop = document.querySelector('.modal-backdrop');
+    
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+    }
+    
+    if (backdrop) {
+      backdrop.remove();
+    }
+    
+    document.body.classList.remove('modal-open');
+  }
+  
+  // Function to set client goals (placeholder)
+  function setClientGoals(clientId) {
+    showToast('Coming Soon', 'Client-specific goal setting will be available soon!', 'info');
+  }
+  
+  // Date Range Selector Functions
+  function initializeDateRangeSelector() {
+    const dateRangeSelect = document.getElementById('dateRangeSelect');
+    const customDateRange = document.getElementById('customDateRange');
+    const applyCustomRange = document.getElementById('applyCustomRange');
+    
+    if (!dateRangeSelect) return;
+    
+    // Handle date range selection change
+    dateRangeSelect.addEventListener('change', function() {
+      if (this.value === 'custom') {
+        customDateRange.style.display = 'block';
+        setDefaultCustomDates();
+      } else {
+        customDateRange.style.display = 'none';
+        currentDateRange.type = this.value;
+        updateDateRange();
+        refreshAllData();
+      }
+    });
+    
+    // Handle custom date range application
+    if (applyCustomRange) {
+      applyCustomRange.addEventListener('click', function() {
+        const startDate = document.getElementById('customStartDate').value;
+        const endDate = document.getElementById('customEndDate').value;
+        
+        if (!startDate || !endDate) {
+          showToast('Date Range Error', 'Please select both start and end dates', 'error');
+          return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+          showToast('Date Range Error', 'Start date must be before end date', 'error');
+          return;
+        }
+        
+        currentDateRange.type = 'custom';
+        currentDateRange.startDate = startDate;
+        currentDateRange.endDate = endDate;
+        updateDateRange();
+        refreshAllData();
+      });
+    }
+  }
+  
+  function setDefaultCustomDates() {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    document.getElementById('customStartDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+    document.getElementById('customEndDate').value = today.toISOString().split('T')[0];
+  }
+  
+  function updateDateRange() {
+    const today = new Date();
+    let startDate, endDate, displayText;
+    
+    switch (currentDateRange.type) {
+      case 'last_7_days':
+        endDate = new Date(today);
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7);
+        displayText = 'Last 7 days';
+        break;
+        
+      case 'last_30_days':
+        endDate = new Date(today);
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        displayText = 'Last 30 days';
+        break;
+        
+      case 'current_month':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today);
+        displayText = 'Current month';
+        break;
+        
+      case 'last_month':
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        displayText = 'Last month';
+        break;
+        
+      case 'current_quarter':
+        const quarterStart = Math.floor(today.getMonth() / 3) * 3;
+        startDate = new Date(today.getFullYear(), quarterStart, 1);
+        endDate = new Date(today);
+        displayText = 'Current quarter';
+        break;
+        
+      case 'last_quarter':
+        const lastQuarterStart = Math.floor(today.getMonth() / 3) * 3 - 3;
+        const year = lastQuarterStart < 0 ? today.getFullYear() - 1 : today.getFullYear();
+        const month = lastQuarterStart < 0 ? lastQuarterStart + 12 : lastQuarterStart;
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 3, 0);
+        displayText = 'Last quarter';
+        break;
+        
+      case 'custom':
+        startDate = new Date(currentDateRange.startDate);
+        endDate = new Date(currentDateRange.endDate);
+        displayText = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+        break;
+        
+      default:
+        // Default to last 30 days
+        endDate = new Date(today);
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        displayText = 'Last 30 days';
+    }
+    
+    // Update global state
+    currentDateRange.startDate = startDate.toISOString().split('T')[0];
+    currentDateRange.endDate = endDate.toISOString().split('T')[0];
+    currentDateRange.displayText = displayText;
+    
+    // Update UI display
+    const displayElement = document.getElementById('currentDateRangeDisplay');
+    if (displayElement) {
+      displayElement.textContent = displayText;
+    }
+    
+    console.log('Date range updated:', currentDateRange);
+  }
+  
+  function refreshAllData() {
+    console.log('Refreshing all data for date range:', currentDateRange);
+    
+    // Refresh client freshness data
+    loadClientFreshness();
+    
+    // Refresh budget data for all clients
+    loadClientBudgets();
+    
+    // Reload page data with new date range
+    refreshPageData();
+  }
+  
+  function getDateRangeParams() {
+    return {
+      start_date: currentDateRange.startDate,
+      end_date: currentDateRange.endDate,
+      range_type: currentDateRange.type
+    };
+  }
+  
+  function manageBudgets(clientId) {
+    // For now, redirect to the budget dashboard with client filter
+    // In the future, this could open a modal for budget management
+    showToast('Budget Management', 'Redirecting to budget dashboard...', 'info');
+    setTimeout(() => {
+      window.location.href = `/budgets/?client_id=${clientId}`;
+    }, 1000);
+  }
+</script>
+{% endblock %}

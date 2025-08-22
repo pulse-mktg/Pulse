@@ -1,0 +1,112 @@
+/* Google Ads Campaigns CSS */
+.dashboard-card {
+    transition: transform 0.2s;
+    overflow: hidden;
+}
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+.metric-card {
+    height: 100%;
+}
+.performance-indicator {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+}
+.performance-positive {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+.performance-negative {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+.performance-neutral {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+.campaign-stats {
+    font-size: 0.875rem;
+}
+.table-campaigns th, .table-campaigns td {
+    vertical-align: middle;
+}
+.campaign-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.campaign-status-active {
+    background-color: #28a745;
+}
+.campaign-status-paused {
+    background-color: #ffc107;
+}
+.campaign-status-removed {
+    background-color: #dc3545;
+}
+.status-filter .btn {
+    border-radius: 20px;
+}
+
+/* Fix for details buttons - prevent any auto-expansion appearance */
+.btn-outline-primary[href*="google_ads_campaign_detail"],
+.campaign-detail-link,
+[data-custom-type="detail-link"] {
+    /* Reset any potential issues with display or positioning */
+    display: inline-block !important;
+    position: relative !important;
+    /* Ensure consistent styling */
+    transition: all 0.15s ease-in-out;
+    /* Force the button to maintain its original state */
+    transform: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    color: #321fdb !important; /* CoreUI primary color */
+    border-color: #321fdb !important;
+}
+
+/* When hovering, only lightly change appearance */
+.btn-outline-primary[href*="google_ads_campaign_detail"]:hover,
+.campaign-detail-link:hover,
+[data-custom-type="detail-link"]:hover {
+    background-color: rgba(50, 31, 219, 0.1) !important;
+    color: #321fdb !important;
+    border-color: #321fdb !important;
+}
+
+/* Force reset any CoreUI-added state classes */
+.table-campaigns a.btn-outline-primary.show,
+.table-campaigns a.btn-outline-primary.active,
+.table-campaigns a.btn-outline-primary:active {
+    background-color: transparent !important;
+    color: #321fdb !important;
+    border-color: #321fdb !important;
+}
+
+/* Additional fix - ensure all rows in the table maintain consistent appearance */
+.table-campaigns tbody tr {
+    background-color: transparent;
+}
+
+/* Important override for any CoreUI dropdown behaviors */
+.table-campaigns .dropdown-menu,
+.table-campaigns .collapse {
+    display: none !important;
+}
+
+/* Style the campaign name links since we removed the details button */
+.table-campaigns a.fw-bold {
+    color: #321fdb;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.table-campaigns a.fw-bold:hover {
+    color: #1b0f99;
+    text-decoration: underline;
+}

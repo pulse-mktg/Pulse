@@ -1,0 +1,404 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'website/css/google_ads_campaigns.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">{{ client.name }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">Platform Accounts</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Google Ads Campaigns</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <h1 class="page-title mb-0">Google Ads Campaigns</h1>
+            </div>
+            <div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-event"></i>
+                        {% if date_range == 'LAST_30_DAYS' %}Last 30 Days
+                        {% elif date_range == 'LAST_7_DAYS' %}Last 7 Days
+                        {% elif date_range == 'LAST_90_DAYS' %}Last 90 Days
+                        {% else %}Last 30 Days{% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item {% if date_range == 'LAST_7_DAYS' %}active{% endif %}" 
+                               href="?date_range=LAST_7_DAYS">Last 7 Days</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item {% if date_range == 'LAST_30_DAYS' %}active{% endif %}" 
+                               href="?date_range=LAST_30_DAYS">Last 30 Days</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item {% if date_range == 'LAST_90_DAYS' %}active{% endif %}" 
+                               href="?date_range=LAST_90_DAYS">Last 90 Days</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4">
+    <div class="d-flex">
+        <div class="me-3">
+            <i class="bi bi-google" style="font-size: 1.5rem;"></i>
+        </div>
+        <div>
+            <h6 class="mb-1">{{ account.platform_client_name }}</h6>
+            <div>Customer ID: {{ account.platform_client_id }}</div>
+        </div>
+        <div class="ms-auto">
+            <form method="post" action="{% url 'sync_google_ads_data' client.id account.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-arrow-repeat me-1"></i> Sync Data
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Impressions</div>
+                        <h3 class="mb-0">{{ summary.impressions|default:"0"|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-eye"></i>
+                    </div>
+                </div>
+                {% if summary.impressions_change %}
+                <div class="mt-3">
+                    <span class="performance-indicator 
+                           {% if summary.impressions_change > 0 %}performance-positive
+                           {% elif summary.impressions_change < 0 %}performance-negative
+                           {% else %}performance-neutral{% endif %}">
+                        {% if summary.impressions_change > 0 %}
+                            <i class="bi bi-arrow-up-short"></i>
+                        {% elif summary.impressions_change < 0 %}
+                            <i class="bi bi-arrow-down-short"></i>
+                        {% endif %}
+                        {{ summary.impressions_change|abs|floatformat:1 }}%
+                    </span>
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Clicks</div>
+                        <h3 class="mb-0">{{ summary.clicks|default:"0"|intcomma }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-cursor"></i>
+                    </div>
+                </div>
+                {% if summary.clicks_change %}
+                <div class="mt-3">
+                    <span class="performance-indicator 
+                           {% if summary.clicks_change > 0 %}performance-positive
+                           {% elif summary.clicks_change < 0 %}performance-negative
+                           {% else %}performance-neutral{% endif %}">
+                        {% if summary.clicks_change > 0 %}
+                            <i class="bi bi-arrow-up-short"></i>
+                        {% elif summary.clicks_change < 0 %}
+                            <i class="bi bi-arrow-down-short"></i>
+                        {% endif %}
+                        {{ summary.clicks_change|abs|floatformat:1 }}%
+                    </span>
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">CTR</div>
+                        <h3 class="mb-0">{{ summary.ctr|default:"0"|floatformat:2 }}%</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-percent"></i>
+                    </div>
+                </div>
+                {% if summary.ctr_change %}
+                <div class="mt-3">
+                    <span class="performance-indicator 
+                           {% if summary.ctr_change > 0 %}performance-positive
+                           {% elif summary.ctr_change < 0 %}performance-negative
+                           {% else %}performance-neutral{% endif %}">
+                        {% if summary.ctr_change > 0 %}
+                            <i class="bi bi-arrow-up-short"></i>
+                        {% elif summary.ctr_change < 0 %}
+                            <i class="bi bi-arrow-down-short"></i>
+                        {% endif %}
+                        {{ summary.ctr_change|abs|floatformat:1 }}%
+                    </span>
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small">Cost</div>
+                        <h3 class="mb-0">${{ summary.cost|default:"0"|floatformat:2 }}</h3>
+                    </div>
+                    <div class="icon-circle bg-light text-primary">
+                        <i class="bi bi-currency-dollar"></i>
+                    </div>
+                </div>
+                {% if summary.cost_change %}
+                <div class="mt-3">
+                    <span class="performance-indicator 
+                           {% if summary.cost_change < 0 %}performance-positive
+                           {% elif summary.cost_change > 0 %}performance-negative
+                           {% else %}performance-neutral{% endif %}">
+                        {% if summary.cost_change > 0 %}
+                            <i class="bi bi-arrow-up-short"></i>
+                        {% elif summary.cost_change < 0 %}
+                            <i class="bi bi-arrow-down-short"></i>
+                        {% endif %}
+                        {{ summary.cost_change|abs|floatformat:1 }}%
+                    </span>
+                    <span class="small text-muted ms-2">vs previous period</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this after the "Campaign Info" and "Key Metrics Cards" sections -->
+<!-- Budget Information -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-cash-stack me-2"></i> Budget Information
+        </h5>
+        {% if campaign_budget_info.has_custom_budgets %}
+        <a href="{% url 'budget_dashboard' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-eye me-1"></i> View Budgets
+        </a>
+        {% else %}
+        <a href="{% url 'create_budget' %}?campaign_id={{ campaign.id }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus-circle me-1"></i> Create Budget
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if campaign_budget_info.has_custom_budgets %}
+        <h6>Custom Budget Allocations:</h6>
+        <div class="list-group mb-3">
+            {% for allocation in campaign_budget_info.allocations %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">{{ allocation.budget.name }}</div>
+                        <div class="small text-muted">
+                            {{ allocation.budget.start_date|date:"M d, Y" }} to {{ allocation.budget.end_date|date:"M d, Y" }}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold">${{ allocation.amount|floatformat:2 }}</div>
+                        {% if allocation.percentage %}
+                        <div class="small text-muted">{{ allocation.percentage }}% of budget</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif campaign_budget_info.campaign_budget %}
+        <div class="row">
+            <div class="col-md-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Daily Budget:</dt>
+                    <dd class="col-sm-7">${{ campaign_budget_info.daily_budget|floatformat:2 }}</dd>
+                    
+                    <dt class="col-sm-5">Monthly Estimate:</dt>
+                    <dd class="col-sm-7">${{ campaign_budget_info.monthly_estimate|floatformat:2 }}</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Month-to-Date Spend:</dt>
+                    <dd class="col-sm-7">${{ campaign_budget_info.month_spend|floatformat:2 }}</dd>
+                    
+                    <dt class="col-sm-5">Budget Pacing:</dt>
+                    <dd class="col-sm-7">
+                        {{ campaign_budget_info.pacing|floatformat:1 }}%
+                        {% if campaign_budget_info.budget_status == 'on-track' %}
+                            <span class="badge bg-success ms-1">On Track</span>
+                        {% elif campaign_budget_info.budget_status == 'underspend' %}
+                            <span class="badge bg-warning ms-1">Underspending</span>
+                        {% elif campaign_budget_info.budget_status == 'overspend' %}
+                            <span class="badge bg-danger ms-1">Overspending</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Add a small progress bar -->
+        <div class="mt-3">
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar {% if campaign_budget_info.budget_status == 'on-track' %}bg-success{% elif campaign_budget_info.budget_status == 'underspend' %}bg-warning{% else %}bg-danger{% endif %}" 
+                     role="progressbar" style="width: {{ campaign_budget_info.pacing|floatformat:0 }}%" 
+                     aria-valuenow="{{ campaign_budget_info.pacing|floatformat:0 }}" aria-valuemin="0" aria-valuemax="200"></div>
+                <!-- 100% marker -->
+                <div style="position: absolute; left: 100%; width: 1px; height: 100%; background-color: #000; transform: translateX(-1px);"></div>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mt-1">
+                <div>0%</div>
+                <div>100%</div>
+                <div>200%</div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-3">
+            <p class="text-muted mb-0">No budget information available for this campaign.</p>
+            <a href="{% url 'create_budget' %}?campaign_id={{ campaign.id }}" class="btn btn-sm btn-primary mt-2">
+                <i class="bi bi-plus-circle me-1"></i> Create Budget
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Campaign Performance Chart -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Performance Trends</h5>
+                <div class="btn-group status-filter" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-metric="impressions">
+                        Impressions
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-metric="clicks">
+                        Clicks
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-metric="cost">
+                        Cost
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="performanceChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Campaigns List -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-megaphone me-2"></i> All Campaigns
+                </h5>
+                <div class="btn-group status-filter" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary active" data-status="all">
+                        All
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-status="active">
+                        <span class="campaign-status campaign-status-active"></span> Active
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-status="paused">
+                        <span class="campaign-status campaign-status-paused"></span> Paused
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-status="removed">
+                        <span class="campaign-status campaign-status-removed"></span> Removed
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if campaigns %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-campaigns">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Status</th>
+                                <th>Budget</th>
+                                <th>Impressions</th>
+                                <th>Clicks</th>
+                                <th>CTR</th>
+                                <th>Avg CPC</th>
+                                <th>Cost</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for campaign in campaigns %}
+                            <tr class="campaign-row" data-status="{{ campaign.status|lower }}">
+                                <td>
+                                    <div>
+                                        <a href="{% url 'google_ads_campaign_detail' client.id account.id campaign.id %}" class="fw-bold">
+                                            {{ campaign.name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-muted small">ID: {{ campaign.id }}</div>
+                                    <div class="text-muted small"><i class="bi bi-info-circle"></i> Click name for details</div>
+                                </td>
+                                <td>
+                                    <div>
+                                        {% if campaign.status == 'ENABLED' %}
+                                        <span class="campaign-status campaign-status-active"></span> Active
+                                        {% elif campaign.status == 'PAUSED' %}
+                                        <span class="campaign-status campaign-status-paused"></span> Paused
+                                        {% else %}
+                                        <span class="campaign-status campaign-status-removed"></span> {{ campaign.status|title }}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>${{ campaign.budget_amount|floatformat:2 }}/day</td>
+                                <td>{{ campaign.metrics.impressions|default:"0"|intcomma }}</td>
+                                <td>{{ campaign.metrics.clicks|default:"0"|intcomma }}</td>
+                                <td>{{ campaign.metrics.ctr|default:"0"|floatformat:2 }}%</td>
+                                <td>${{ campaign.metrics.avg_cpc|default:"0"|floatformat:2 }}</td>
+                                <td>${{ campaign.metrics.cost|default:"0"|floatformat:2 }}</td>
+                                <!-- Removed the Details button as requested -->
+                                <td>
+                                    <!-- Empty cell - Details button removed -->
+                                </td>
+                            </tr>
+                            {% endfor %}

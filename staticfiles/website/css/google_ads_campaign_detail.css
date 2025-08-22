@@ -1,0 +1,78 @@
+/* Google Ads Campaign Detail CSS */
+.metric-card {
+    height: 100%;
+}
+.performance-indicator {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+}
+.performance-positive {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+.performance-negative {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+.performance-neutral {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+.adgroup-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.adgroup-status-active {
+    background-color: #28a745;
+}
+.adgroup-status-paused {
+    background-color: #ffc107;
+}
+.adgroup-status-removed {
+    background-color: #dc3545;
+}
+.campaign-info {
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+.campaign-info dt {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Budget card styling */
+.progress-thin {
+    height: 8px;
+}
+.spend-card {
+    border-left: 4px solid #321fdb;
+}
+.expected-card {
+    border-left: 4px solid #3399ff;
+}
+.variance-card {
+    border-left: 4px solid #e55353;
+}
+.time-elapsed-card {
+    border-left: 4px solid #f9b115;
+}
+.allocation-item {
+    border-left: 3px solid #ced4da;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+.platform-allocation {
+    border-left-color: #321fdb;
+}
+.account-allocation {
+    border-left-color: #2eb85c;
+}
+.campaign-allocation {
+    border-left-color: #f9b115;
+}

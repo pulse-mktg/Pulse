@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">{{ client.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Platform Accounts</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-link-45deg me-2"></i> {{ client.name }} - Platform Accounts
+                </h5>
+                <div>
+                    <a href="{% url 'connect_platform' client.id %}" class="btn btn-outline-primary ms-2">
+                        <i class="bi bi-plus-circle me-1"></i> Connect Platform
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Connect your client to platform accounts to view and analyze their performance data.
+                </div>
+
+                {% if has_accounts %}
+                {% for platform_slug, platform_data in grouped_accounts.items %}
+                <div class="platform-section mb-4">
+                    <h5 class="mb-3">
+                        <i class="bi 
+                    {% if platform_slug == 'google-ads' %}bi-google
+                    {% elif platform_slug == 'facebook-ads' %}bi-facebook
+                    {% elif platform_slug == 'linkedin-ads' %}bi-linkedin
+                    {% else %}bi-box{% endif %} me-2"></i>
+                        {{ platform_data.platform_type.name }}
+                    </h5>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Account Name</th>
+                                    <th>Account ID</th>
+                                    <th>API Connection</th>  <!-- Changed from "Status" -->
+                                    <th>Last Synced</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for account in platform_data.accounts %}
+                                    <tr {% if not account.is_active %}class="table-secondary"{% endif %}>
+                                        <td>
+                                            {{ account.platform_client_name }}
+                                            {% if not account.is_active %}
+                                                <span class="badge bg-secondary">Account Disabled</span>  <!-- Changed from "Inactive" -->
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ account.platform_client_id }}</td>
+                                        <td>
+                                            {% if account.platform_connection.connection_status == 'active' %}
+                                                <span class="badge bg-success">API Connected</span>  <!-- Changed label -->
+                                            {% elif account.platform_connection.connection_status == 'expired' %}
+                                                <span class="badge bg-warning">API Token Expired</span>  <!-- Changed label -->
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    API {{ account.platform_connection.get_connection_status_display }}  <!-- Added "API" prefix -->
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if account.platform_connection.last_synced %}
+                                                {{ account.platform_connection.last_synced|date:"M d, Y" }}
+                                            {% else %}
+                                                <span class="text-muted">Never</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                {% if account.is_active %}
+                                                <a href="{% url 'google_ads_campaigns' client.id account.id %}" class="btn btn-sm btn-outline-primary">
+                                                    View Campaigns
+                                                </a>
+                                                <form method="post" action="{% url 'remove_client_platform_account' account.id %}" onsubmit="return confirm('Are you sure you want to remove this account?');" class="d-inline ms-2">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form method="post" action="{% url 'reactivate_client_platform_account' account.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-success">
+                                                        <i class="bi bi-arrow-clockwise me-1"></i> Reactivate
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No platform accounts connected yet.</p>
+
+                    <a href="{% url 'connect_platform' client.id %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-circle me-1"></i> Connect Platform
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

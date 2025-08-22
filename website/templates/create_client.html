@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-badge me-2"></i> Create New Client
+                </h5>
+                <span class="badge bg-info">{{ tenant.name }}</span>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> Please correct the issues below.
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">
+                            Client Name
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="text-danger">
+                            {{ form.name.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            Description
+                        </label>
+                        {{ form.description }}
+                        <small class="form-text text-muted">Provide information about the client's business, goals, or other relevant details.</small>
+                        {% if form.description.errors %}
+                        <div class="text-danger">
+                            {{ form.description.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.logo.id_for_label }}" class="form-label">
+                            Client Logo
+                        </label>
+                        {{ form.logo }}
+                        <small class="form-text text-muted">Optional: Upload a logo for your client</small>
+                        {% if form.logo.errors %}
+                        <div class="text-danger">
+                            {{ form.logo.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Client Classification Fields to add to forms -->
+                    <h5 class="mt-4 mb-3">Client Classification</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_industry" class="form-label">Industry</label>
+                            <select name="industry" id="id_industry" class="form-select">
+                                <option value="">-- Select industry --</option>
+                                {% for value, text in form.fields.industry.choices %}
+                                    <option value="{{ value }}" {% if form.instance.industry == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Select the client's primary industry</small>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_company_size" class="form-label">Company Size</label>
+                            <select name="company_size" id="id_company_size" class="form-select">
+                                <option value="">-- Select company size --</option>
+                                {% for value, text in form.fields.company_size.choices %}
+                                    <option value="{{ value }}" {% if form.instance.company_size == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Optional: Select the size of the client's company</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_revenue_range" class="form-label">Revenue Range</label>
+                            <select name="revenue_range" id="id_revenue_range" class="form-select">
+                                <option value="">-- Select revenue range --</option>
+                                {% for value, text in form.fields.revenue_range.choices %}
+                                    <option value="{{ value }}" {% if form.instance.revenue_range == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Optional: Select the client's revenue range</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="id_geographic_focus" class="form-label">Geographic Focus</label>
+                            <select name="geographic_focus" id="id_geographic_focus" class="form-select">
+                                <option value="">-- Select geographic focus --</option>
+                                {% for value, text in form.fields.geographic_focus.choices %}
+                                    <option value="{{ value }}" {% if form.instance.geographic_focus == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Optional: Select the client's geographic reach</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="id_marketing_maturity" class="form-label">Marketing Maturity</label>
+                            <select name="marketing_maturity" id="id_marketing_maturity" class="form-select">
+                                <option value="">-- Select marketing maturity --</option>
+                                {% for value, text in form.fields.marketing_maturity.choices %}
+                                    <option value="{{ value }}" {% if form.instance.marketing_maturity == value %}selected{% endif %}>{{ text }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Optional: Select the client's marketing maturity level</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Business Model Types</label>
+                        <div class="border rounded p-3">
+                            {% for value, text in form.fields.business_model_types.choices %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="business_model_types" 
+                                        value="{{ value }}" id="id_business_model_types_{{ forloop.counter }}"
+                                        {% if value in form.instance.business_model_types %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_business_model_types_{{ forloop.counter }}">
+                                        {{ text }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text text-muted">Optional: Select all business model types that apply</small>
+                    </div>              
+
+                                        <div class="d-flex justify-content-end">
+                                            <a href="{% url 'home' %}" class="btn btn-secondary me-2">Cancel</a>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-plus-circle me-1"></i> Create Client
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+{% endblock %}

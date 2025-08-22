@@ -1,0 +1,1599 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<style>
+    .manager-account {
+        border: 1px solid #e9ecef;
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+    }
+    
+    .manager-header {
+        cursor: pointer;
+    }
+    
+    .manager-account .account-item {
+        background-color: white;
+    }
+    
+    /* Highlight effect for search matches */
+    .highlight {
+        background-color: #fff3cd;
+    }
+    .manager-account {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.standalone-accounts {
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.manager-header, .account-header {
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.manager-header:hover, .account-header:hover {
+    background-color: #f1f3f5;
+}
+
+.toggle-children {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.account-item {
+    border: 1px solid #e9ecef;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+}
+
+.account-item:hover {
+    border-color: #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.account-item strong {
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.account-item .small.text-muted {
+    color: #adb5bd !important;
+    font-size: 0.8rem;
+}
+
+.manager-account .bi-folder, 
+.manager-account .bi-folder-open {
+    color: #ffc107;
+}
+
+.standalone-accounts .bi-diagram-3 {
+    color: #20c997;
+}
+
+/* Make search more noticeable */
+#accountSearchInput {
+    border-width: 2px;
+}
+
+#accountSearchInput:focus {
+    box-shadow: 0 0 0 0.25rem rgba(66, 133, 244, 0.15);
+    border-color: #4285f4;
+}
+</style>
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ client.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                {% if client.logo and client.logo.name %}
+                <div class="me-3" style="width: 50px; height: 50px;">
+                    <img src="{{ client.logo.url }}" alt="{{ client.name }} logo" class="img-fluid rounded">
+                </div>
+                {% else %}
+                <div class="me-3 bg-light d-flex align-items-center justify-content-center rounded"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-person" style="font-size: 1.5rem; color: #8a93a2;"></i>
+                </div>
+                {% endif %}
+                <h1 class="page-title mb-0">{{ client.name }}</h1>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-coreui-toggle="dropdown"
+                    aria-expanded="false">
+                    Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'client_detail' client.id %}">
+                            <i class="bi bi-info-circle me-2"></i> Client Details
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'edit_client' client.id %}">
+                            <i class="bi bi-pencil me-2"></i> Edit Client
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'connect_platform' client.id %}">
+                            <i class="bi bi-link-45deg me-2"></i> Connect Platform
+                        </a>
+                    </li>
+                    {% if platform_accounts %}
+                    <li>
+                        <a class="dropdown-item" href="{% url 'campaign_budget_dashboard' client.id %}">
+                            <i class="bi bi-cash-stack me-2"></i> Campaign Budgets
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="{% url 'archive_client' client.id %}"
+                            onclick="return confirm('Are you sure you want to archive this client?');">
+                            <i class="bi bi-trash me-2"></i> Archive Client
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Overview Card -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Client Overview</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-5">Industry:</dt>
+                    <dd class="col-sm-7">{{ client.get_industry_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Company Size:</dt>
+                    <dd class="col-sm-7">{{ client.get_company_size_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Revenue Range:</dt>
+                    <dd class="col-sm-7">{{ client.get_revenue_range_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Geographic Focus:</dt>
+                    <dd class="col-sm-7">{{ client.get_geographic_focus_display|default:"Not specified" }}</dd>
+                    
+                    <dt class="col-sm-5">Marketing Maturity:</dt>
+                    <dd class="col-sm-7">{{ client.get_marketing_maturity_display|default:"Not specified" }}</dd>
+                </dl>
+                
+                <div class="text-center mt-3">
+                    <a href="{% url 'client_detail' client.id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-info-circle me-1"></i> View Full Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Connected Platforms Section - Redesigned with Account Counts -->
+<div class="col-md-8">
+    <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Connected Platforms</h5>
+            <a href="{% url 'connect_platform' client.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-link-45deg me-1"></i> Connect New Platform
+            </a>
+        </div>
+        <div class="card-body">
+            {% if tenant_platforms %}
+            <div class="row">
+                {% for platform in tenant_platforms %}
+                <!-- Platform Card -->
+                <div class="col-md-4 mb-3">
+                    <div class="border rounded p-3 h-100 d-flex flex-column {% if not platform.is_connected %}bg-light{% endif %}">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-2">
+                                <i class="bi {% if platform.slug == 'google-ads' %}bi-google{% elif platform.slug == 'facebook-ads' %}bi-facebook{% elif platform.slug == 'linkedin-ads' %}bi-linkedin{% else %}{{ platform.icon_class }}{% endif %}" style="font-size: 1.5rem;"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ platform.name }}</h6>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {% if platform.has_client_accounts %}
+                                {% with platform_accounts=platform_accounts|filter_by_platform:platform.slug %}
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-success me-2">Connected</span>
+                                        <small class="text-muted">{{ platform_accounts|length }} account{{ platform_accounts|length|pluralize }}</small>
+                                    </div>
+                                {% endwith %}
+                            {% elif platform.is_connected %}
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">Available</span>
+                                    <small class="text-muted">No accounts connected</small>
+                                </div>
+                            {% else %}
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-light text-dark me-2">Not Connected</span>
+                                    <small class="text-muted">Connect at tenant level</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-auto">
+                            {% if platform.has_client_accounts %}
+                            <button class="btn btn-sm btn-primary w-100 manage-platform-btn"
+                                    data-platform-id="{{ platform.id }}"
+                                    data-platform-slug="{{ platform.slug }}"
+                                    data-platform-name="{{ platform.name }}"
+                                    data-coreui-toggle="modal"
+                                    data-coreui-target="#managePlatformModal">
+                                <i class="bi bi-gear-fill me-1"></i> Manage Accounts
+                            </button>
+                            {% elif platform.is_connected %}
+                            <button class="btn btn-sm btn-outline-primary w-100 manage-platform-btn" data-platform-id="{{ platform.id }}"
+                                data-platform-slug="{{ platform.slug }}" data-platform-name="{{ platform.name }}" data-coreui-toggle="modal"
+                                data-coreui-target="#managePlatformModal">
+                                <i class="bi bi-plus-circle me-1"></i> Add Accounts
+                            </button>
+                            {% else %}
+                            <a href="{% url 'connect_platform' client.id %}" class="btn btn-sm btn-outline-secondary w-100">
+                                <i class="bi bi-link-45deg me-1"></i> Connect Platform
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Hidden data elements for JavaScript to use -->
+            {% for account in platform_accounts %}
+            <div class="d-none" 
+                 data-account-platform="{{ account.platform_connection.platform_type.slug }}"
+                 data-account-id="{{ account.id }}"
+                 data-account-name="{{ account.platform_client_name }}"
+                 data-client-id="{{ account.platform_client_id }}">
+            </div>
+            {% endfor %}
+            
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-link-45deg" style="font-size: 3rem; color: #8a93a2;"></i>
+                <p class="mt-3 text-muted">No platform connections available.</p>
+                <a href="{% url 'tenant_platforms' %}" class="btn btn-primary mt-2">
+                    <i class="bi bi-plus-circle me-1"></i> Connect Tenant Platforms
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Groups & Budgets Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Client Groups</h5>
+                <a href="{% url 'client_groups' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-collection me-1"></i> Manage Groups
+                </a>
+            </div>
+            <div class="card-body">
+                {% if client_groups %}
+                <div class="list-group">
+                    {% for group in client_groups %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge me-2" style="background-color: {{ group.color }};">
+                                <i class="bi {{ group.icon_class }}"></i>
+                            </span>
+                            {{ group.name }}
+                            {% if group.is_auto_generated %}
+                            <span class="badge bg-light text-dark ms-1">Auto</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ group.client_count }} clients</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-collection" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">This client is not part of any groups yet.</p>
+                    <a href="{% url 'client_groups' %}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Add to Group
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Active Budgets</h5>
+                <a href="{% url 'create_budget' %}?client_id={{ client.id }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Create Budget
+                </a>
+            </div>
+            <div class="card-body">
+                {% if client_budgets %}
+                <div class="list-group">
+                    {% for budget in client_budgets %}
+                    <a href="{% url 'budget_detail' budget.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ budget.name }}</h6>
+                                <small class="text-muted">
+                                    {{ budget.start_date|date:"M d, Y" }} - {{ budget.end_date|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">${{ budget.amount|floatformat:2 }}</div>
+                                <small class="text-muted">{{ budget.get_frequency_display }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-cash-stack" style="font-size: 3rem; color: #8a93a2;"></i>
+                    <p class="mt-3 text-muted">No active budgets found for this client.</p>
+                    <a href="{% url 'create_budget' %}?client_id={{ client.id }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Create Budget
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-flag me-2"></i> Competitors
+        </h5>
+        <button class="btn btn-sm btn-primary" data-coreui-toggle="modal" data-coreui-target="#addCompetitorModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Competitor
+        </button>
+    </div>
+    <div class="card-body">
+        {% if competitors %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Website</th>
+                        <th>Threat Level</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for competitor in competitors %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {{ competitor.name }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if competitor.website %}
+                            <a href="{{ competitor.website }}" target="_blank" rel="noopener noreferrer">
+                                {{ competitor.website|truncatechars:30 }}
+                                <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted">No website</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if competitor.strength == 'low' %}
+                            <span class="badge bg-success">Low Threat</span>
+                            {% elif competitor.strength == 'medium' %}
+                            <span class="badge bg-warning">Medium Threat</span>
+                            {% elif competitor.strength == 'high' %}
+                            <span class="badge bg-danger">High Threat</span>
+                            {% elif competitor.strength == 'direct' %}
+                            <span class="badge bg-danger">Direct Competitor</span>
+                            {% elif competitor.strength == 'indirect' %}
+                            <span class="badge bg-info">Indirect Competitor</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        data-coreui-toggle="modal"
+                                        data-coreui-target="#viewCompetitorModal{{ competitor.id }}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        data-coreui-toggle="modal"
+                                        data-coreui-target="#editCompetitorModal{{ competitor.id }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-competitor-btn"
+                                        data-competitor-id="{{ competitor.id }}"
+                                        data-competitor-name="{{ competitor.name }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No competitors have been added yet. Click the "Add Competitor" button to add one.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Performance Metrics Section (Placeholder) -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Metrics</h5>
+            </div>
+            <div class="card-body text-center py-5">
+                <i class="bi bi-graph-up" style="font-size: 3rem; color: #8a93a2;"></i>
+                <h5 class="mt-3">Performance Metrics Coming Soon</h5>
+                <p class="text-muted mb-0">Connect platform accounts to see performance metrics here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Platform Accounts Modal -->
+<div class="modal fade" id="managePlatformModal" tabindex="-1" aria-labelledby="managePlatformModalLabel" aria-hidden="true" data-platform-id="">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="managePlatformModalLabel">Manage <span id="platformName"></span> Accounts</h5>
+                <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="refreshAccountsBtn" onclick="refreshAccounts()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Current Connected Accounts Section -->
+                <div class="mb-4">
+                    <h6>Connected Accounts</h6>
+                    <div id="connectedAccountsList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2">Loading accounts...</span>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                
+                <!-- Available Accounts Section -->
+                <div>
+                    <h6>Available Accounts</h6>
+                    <div id="availableAccountsList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2">Loading available accounts...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="resyncAccountsBtn">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Resync Accounts
+                </button>
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- View Competitor Modals -->
+{% for competitor in competitors %}
+<div class="modal fade" id="viewCompetitorModal{{ competitor.id }}" tabindex="-1" aria-labelledby="viewCompetitorModalLabel{{ competitor.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewCompetitorModalLabel{{ competitor.id }}">
+                    {{ competitor.name }}
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="text-muted">Website</h6>
+                    {% if competitor.website %}
+                    <p><a href="{{ competitor.website }}" target="_blank" rel="noopener noreferrer">{{ competitor.website }}</a></p>
+                    {% else %}
+                    <p class="text-muted">No website</p>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Description</h6>
+                    <p>{{ competitor.description|default:"No description provided" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Threat Level</h6>
+                    <p>
+                        {% if competitor.strength == 'low' %}
+                        <span class="badge bg-success">Low Threat</span>
+                        {% elif competitor.strength == 'medium' %}
+                        <span class="badge bg-warning">Medium Threat</span>
+                        {% elif competitor.strength == 'high' %}
+                        <span class="badge bg-danger">High Threat</span>
+                        {% elif competitor.strength == 'direct' %}
+                        <span class="badge bg-danger">Direct Competitor</span>
+                        {% elif competitor.strength == 'indirect' %}
+                        <span class="badge bg-info">Indirect Competitor</span>
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Key Advantages</h6>
+                    <p>{{ competitor.advantages|default:"No advantages provided"|linebreaks }}</p>
+                </div>
+                
+                <div class="mb-0">
+                    <h6 class="text-muted">Added</h6>
+                    <p>{{ competitor.created_at|date:"M d, Y" }}</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-coreui-dismiss="modal" data-coreui-toggle="modal" data-coreui-target="#editCompetitorModal{{ competitor.id }}">Edit</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Add Competitor Modal -->
+<div class="modal fade" id="addCompetitorModal" tabindex="-1" aria-labelledby="addCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCompetitorModalLabel">
+                    <i class="bi bi-plus-circle me-1"></i> Add Competitor
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'add_competitor' client.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name</label>
+                        <input type="text" name="name" id="id_name" class="form-control" required placeholder="Competitor Name">
+                    </div>
+                    
+                    <!-- Website -->
+                    <div class="mb-3">
+                        <label for="id_website" class="form-label">Website</label>
+                        <input type="url" name="website" id="id_website" class="form-control" placeholder="https://competitor.com">
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        <textarea name="description" id="id_description" class="form-control" rows="2" placeholder="Brief description of the competitor"></textarea>
+                    </div>
+                    
+                    <!-- Threat Level -->
+                    <div class="mb-3">
+                        <label for="id_strength" class="form-label">Threat Level</label>
+                        <select name="strength" id="id_strength" class="form-select">
+                            <option value="low">Low Threat</option>
+                            <option value="medium" selected>Medium Threat</option>
+                            <option value="high">High Threat</option>
+                            <option value="direct">Direct Competitor</option>
+                            <option value="indirect">Indirect Competitor</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advantages -->
+                    <div class="mb-0">
+                        <label for="id_advantages" class="form-label">Key Advantages</label>
+                        <textarea name="advantages" id="id_advantages" class="form-control" rows="3" placeholder="What makes this competitor strong or unique?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Competitor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Edit Competitor Modals -->
+{% for competitor in competitors %}
+<div class="modal fade" id="editCompetitorModal{{ competitor.id }}" tabindex="-1" aria-labelledby="editCompetitorModalLabel{{ competitor.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCompetitorModalLabel{{ competitor.id }}">
+                    <i class="bi bi-pencil me-1"></i> Edit: {{ competitor.name }}
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'edit_competitor' client.id competitor.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label for="id_name_{{ competitor.id }}" class="form-label">Name</label>
+                        <input type="text" name="name" id="id_name_{{ competitor.id }}" class="form-control" required value="{{ competitor.name }}">
+                    </div>
+                    
+                    <!-- Website -->
+                    <div class="mb-3">
+                        <label for="id_website_{{ competitor.id }}" class="form-label">Website</label>
+                        <input type="url" name="website" id="id_website_{{ competitor.id }}" class="form-control" value="{{ competitor.website|default:'' }}">
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="id_description_{{ competitor.id }}" class="form-label">Description</label>
+                        <textarea name="description" id="id_description_{{ competitor.id }}" class="form-control" rows="2">{{ competitor.description }}</textarea>
+                    </div>
+                    
+                    <!-- Threat Level -->
+                    <div class="mb-3">
+                        <label for="id_strength_{{ competitor.id }}" class="form-label">Threat Level</label>
+                        <select name="strength" id="id_strength_{{ competitor.id }}" class="form-select">
+                            <option value="low" {% if competitor.strength == 'low' %}selected{% endif %}>Low Threat</option>
+                            <option value="medium" {% if competitor.strength == 'medium' %}selected{% endif %}>Medium Threat</option>
+                            <option value="high" {% if competitor.strength == 'high' %}selected{% endif %}>High Threat</option>
+                            <option value="direct" {% if competitor.strength == 'direct' %}selected{% endif %}>Direct Competitor</option>
+                            <option value="indirect" {% if competitor.strength == 'indirect' %}selected{% endif %}>Indirect Competitor</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advantages -->
+                    <div class="mb-0">
+                        <label for="id_advantages_{{ competitor.id }}" class="form-label">Key Advantages</label>
+                        <textarea name="advantages" id="id_advantages_{{ competitor.id }}" class="form-control" rows="3">{{ competitor.advantages }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Delete Competitor Confirmation Modal -->
+<div class="modal fade" id="deleteCompetitorModal" tabindex="-1" aria-labelledby="deleteCompetitorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCompetitorModalLabel">
+                    <i class="bi bi-exclamation-triangle me-1 text-danger"></i> Delete Competitor
+                </h5>
+                <button type="button" class="btn-close" data-coreui-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the competitor "<span id="deleteCompetitorName"></span>"?</p>
+                <p class="text-danger mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-coreui-dismiss="modal">Cancel</button>
+                <form id="deleteCompetitorForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- JavaScript for Platform Account Management -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get modal elements
+        const managePlatformModal = document.getElementById('managePlatformModal');
+        const platformNameElement = document.getElementById('platformName');
+        const connectedAccountsList = document.getElementById('connectedAccountsList');
+        const availableAccountsList = document.getElementById('availableAccountsList');
+        
+        // Handle clicking on manage platform buttons
+        const managePlatformButtons = document.querySelectorAll('.manage-platform-btn');
+        managePlatformButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const platformId = this.getAttribute('data-platform-id');
+                const platformName = this.getAttribute('data-platform-name');
+                
+                // Update modal title and store platform ID in modal dataset
+                platformNameElement.textContent = platformName;
+                document.getElementById('managePlatformModal').setAttribute('data-platform-id', platformId);
+                
+                // Reset lists
+                connectedAccountsList.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="ms-2">Loading accounts...</span>
+                    </div>
+                `;
+                
+                availableAccountsList.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="ms-2">Loading available accounts...</span>
+                    </div>
+                `;
+                
+                // Load connected accounts
+                loadConnectedAccounts(this.getAttribute('data-platform-slug'));
+                
+                // Load available accounts
+                loadAvailableAccounts(platformId);
+            });
+        });
+        
+        // Check for query parameter to open accounts modal
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('open_accounts_modal')) {
+            // Find the first Google Ads platform button
+            const googleAdsButton = document.querySelector('[data-platform-slug="google-ads"]');
+            if (googleAdsButton) {
+                // Simulate a click on the button to open the modal
+                googleAdsButton.click();
+            }
+        }
+    });
+    
+    // Function to load connected accounts
+    function loadConnectedAccounts(platformSlug) {
+        const connectedAccounts = [];
+        
+        // Find accounts for this platform in the DOM data attributes
+        document.querySelectorAll('[data-account-platform="' + platformSlug + '"]').forEach(el => {
+            connectedAccounts.push({
+                id: el.getAttribute('data-account-id'),
+                name: el.getAttribute('data-account-name'),
+                clientId: el.getAttribute('data-client-id')
+            });
+        });
+        
+        console.log('Connected accounts:', connectedAccounts);
+        
+        if (connectedAccounts.length > 0) {
+            connectedAccountsList.innerHTML = `
+                <div class="list-group">
+                    ${connectedAccounts.map(account => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                                <div class="small text-muted">Account ID: ${account.clientId}</div>
+                            </div>
+                            <div class="btn-group">
+                                <a href="/client/{{ client.id }}/google-ads/${account.id}/" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-graph-up me-1"></i> View
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="removeAccount('${account.id}', '${account.name}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            connectedAccountsList.innerHTML = `
+                <div class="alert alert-info">
+                    No accounts connected to this client yet.
+                </div>
+            `;
+        }
+    }
+    
+    // Store the current platform connection 
+    let selectedConnection = null;
+
+// Function to load available accounts from API with hierarchical display
+    function loadAvailableAccounts(platformId, forceRefresh = false) {
+        // Fetch available accounts from API
+        console.log(`Fetching accounts for platform ${platformId}...`);
+        
+        // Add refresh parameter if requested
+        const url = forceRefresh ? 
+            `/api/platform/${platformId}/accounts/?refresh=true` : 
+            `/api/platform/${platformId}/accounts/`;
+        
+        console.log(`🔄 API URL: ${url}`);
+        if (forceRefresh) {
+            console.log(`🔄 FORCE REFRESH: Making fresh API call, bypassing cache`);
+        }
+        
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('------------- DEBUG: API RESPONSE -------------');
+                console.log('Response data:', JSON.stringify(data));
+                console.log('Account count:', data.accounts?.length);
+                console.log('Has managers:', data.has_managers);
+                
+                // Debug specific account data
+                if (data.accounts && data.accounts.length > 0) {
+                    console.log('SAMPLE ACCOUNTS:');
+                    data.accounts.slice(0, 5).forEach((acct, idx) => {
+                        console.log(`Account ${idx+1}:`, 
+                            JSON.stringify({
+                                id: acct.id,
+                                name: acct.name,
+                                is_manager: acct.is_manager,
+                                child_count: acct.child_accounts?.length || 0
+                            })
+                        );
+                    });
+                }
+                
+                // Debug first few accounts to see their structure
+                if (data.accounts && data.accounts.length > 0) {
+                    console.log('Sample account structure:', JSON.stringify(data.accounts[0]));
+                    
+                    // CRITICAL: Process the accounts to make sure all have descriptive names
+                    // This ensures the account name is displayed prominently instead of just the ID
+                    function ensureAccountHasName(account) {
+                        console.log("Processing account for name:", account.id, "current name:", account.name || "MISSING");
+                        
+                        // If name is missing or same as ID, try to create a more descriptive name
+                        if (!account.name || account.name === account.id || account.name.includes(`Account ${account.id}`)) {
+                            // Get a more descriptive name based on the type of account
+                            let descriptiveName;
+                            if (account.is_manager) {
+                                descriptiveName = `Google Ads Manager Account`;
+                            } else {
+                                descriptiveName = `Google Ads Client Account`;
+                            }
+                            
+                            // Add a custom name with the ID to make it unique
+                            const oldName = account.name || "(none)";
+                            account.name = `${descriptiveName} ${account.id}`;
+                            
+                            // Log that we've fixed an account name
+                            console.log(`FIXED: Account ${account.id} - Name changed from "${oldName}" to "${account.name}"`);
+                        }
+                        
+                        // Also process child accounts if they exist
+                        if (account.child_accounts && account.child_accounts.length > 0) {
+                            console.log(`Processing ${account.child_accounts.length} child accounts of ${account.id}`);
+                            account.child_accounts.forEach(child => ensureAccountHasName(child));
+                        }
+                    }
+                    
+                    console.log("-------------- FIXING ACCOUNT NAMES --------------");
+                    // Process all accounts
+                    data.accounts.forEach(account => ensureAccountHasName(account));
+                    
+                    console.log("-------------- ACCOUNTS AFTER NAMING FIX --------------");
+                    data.accounts.forEach((account, idx) => {
+                        console.log(`FINAL Account ${idx+1}: ID=${account.id}, Name="${account.name}", IsManager=${account.is_manager}`);
+                        if (account.child_accounts && account.child_accounts.length > 0) {
+                            console.log(`  Has ${account.child_accounts.length} children`);
+                            account.child_accounts.slice(0, 3).forEach((child, childIdx) => {
+                                console.log(`  Child ${childIdx+1}: ID=${child.id}, Name="${child.name || 'MISSING!!!'}"`);
+                            });
+                        }
+                    });
+                }
+                
+                // Store platform connection information if available
+                if (data.connection) {
+                    selectedConnection = {
+                        platform_account_name: data.connection.platform_account_name || 'Google Ads',
+                        platform_account_email: data.connection.platform_account_email || ''
+                    };
+                }
+                
+                if (data.error) {
+                    availableAccountsList.innerHTML = `
+                        <div class="alert alert-danger">
+                            ${data.error}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!data.accounts || data.accounts.length === 0) {
+                    availableAccountsList.innerHTML = `
+                        <div class="alert alert-info">
+                            No available accounts found for this platform.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add search input and cache status at the top
+                const cacheStatusHtml = data.from_cache ? 
+                    `<div class="alert alert-info py-2 small">
+                        <i class="bi bi-database me-1"></i> 
+                        Showing cached data (${data.total_accounts} accounts total). 
+                        <span class="text-muted">Click refresh to get latest data.</span>
+                    </div>` : '';
+                
+                availableAccountsList.innerHTML = `
+                    ${cacheStatusHtml}
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="accountSearchInput" 
+                               placeholder="Search accounts...">
+                    </div>
+                    <div id="accountsContainer"></div>
+                `;
+                
+                const accountsContainer = document.getElementById('accountsContainer');
+                
+                // Check if we have manager accounts
+                if (data.has_managers) {
+                    // Display hierarchical view with manager accounts and their children
+                    renderHierarchicalAccounts(data.accounts, accountsContainer);
+                } else {
+                    // Display flat list of accounts
+                    renderFlatAccounts(data.accounts, accountsContainer);
+                }
+                
+                // Setup search functionality
+                setupAccountSearch();
+            })
+            .catch(error => {
+                console.error("Account loading error:", error);
+                
+                // Try to parse more details about the error
+                let errorMessage = error.message || "Unknown error";
+                
+                // Handle specific cases of common errors
+                if (errorMessage.includes("Unexpected token '<'")) {
+                    errorMessage = "Invalid response received from server. This usually happens when Google Ads API credentials are missing or incorrect. Please check your environment variables: GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_ADS_DEVELOPER_TOKEN.";
+                } else if (errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+                    errorMessage = "Network error while connecting to Google Ads API. Please check your internet connection and try again.";
+                } else if (errorMessage.includes("JSON")) {
+                    errorMessage = "Invalid data received from Google Ads API. This could be due to incorrect credentials or temporary API issues.";
+                }
+                
+                availableAccountsList.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>Error loading accounts</h6>
+                        <p>${errorMessage}</p>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary" onclick="fetchAccounts()">
+                                <i class="bi bi-arrow-repeat me-1"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+    }
+    
+    // Function to render hierarchical accounts - grouped by platform connection
+    function renderHierarchicalAccounts(accounts, container) {
+        // Log accounts data for debugging
+        console.log('Rendering accounts:', accounts);
+        
+        // Account Structure:
+        // 1. Group by platform connection first
+        // 2. Then show manager accounts with child accounts
+        // 3. Then show standalone accounts
+        
+        // First, create the platform connection folder
+        const platformConnection = {
+            name: selectedConnection ? selectedConnection.platform_account_name : 'Google Ads Platform',
+            email: selectedConnection ? selectedConnection.platform_account_email : '',
+            children: accounts // All accounts belong to this connection
+        };
+                
+        // Start with platform connection as the top-level folder
+        let html = `
+            <div class="platform-connection mb-4">
+                <div class="connection-header d-flex justify-content-between align-items-center bg-primary text-white p-2 rounded">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-sm btn-light toggle-children me-2" aria-expanded="true">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <i class="bi bi-google me-2"></i>
+                        <strong>${platformConnection.name}</strong>
+                        <span class="badge bg-light text-dark ms-2">
+                            ${platformConnection.email}
+                        </span>
+                    </div>
+                </div>
+                <div class="child-accounts mt-2">
+        `;
+                
+        // Separate manager accounts and standalone accounts
+        const managerAccounts = accounts.filter(a => 
+            a.is_manager || 
+            (a.child_accounts && a.child_accounts.length > 0)
+        );
+        
+        const standaloneAccounts = accounts.filter(a => 
+            !a.is_manager && 
+            (!a.child_accounts || a.child_accounts.length === 0)
+        );
+        
+        console.log('Manager accounts:', managerAccounts.length, 'Standalone accounts:', standaloneAccounts.length);
+        
+        // Add each manager account with its children
+        managerAccounts.forEach(manager => {
+            // Only display manager accounts that have children
+            if (manager.child_accounts && manager.child_accounts.length > 0) {
+                console.log(`Manager ${manager.name} (${manager.id}) has child accounts:`, manager.child_accounts.length);
+                console.log(`First few children:`, manager.child_accounts.slice(0, 3));
+                
+                html += `
+                    <div class="manager-account mb-3 ms-3" data-account-id="${manager.id}">
+                        <div class="manager-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-sm toggle-children me-2" aria-expanded="false">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <i class="bi bi-folder me-2"></i>
+                                <strong>${manager.name}</strong>
+                                <span class="badge bg-secondary ms-2">Manager</span>
+                                <span class="badge bg-info ms-1">${manager.child_accounts.length} accounts</span>
+                            </div>
+                        </div>
+                        <div class="child-accounts ps-4 mt-2" style="display: none;">
+                            ${manager.child_accounts.map(child => {
+                                // DEBUG CHILD ACCOUNT
+                                console.log("RENDERING CHILD ACCOUNT:", child);
+                                
+                                return `
+                                <div class="account-item p-2 mb-2" data-account-id="${child.id}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong style="font-size: 1rem; display: block; color: #0056b3;">${child.name || 'Google Ads Account'}</strong>
+                                            <div class="small text-muted">Account ID: ${child.id}</div>
+                                        </div>
+                                        <button class="btn btn-sm btn-primary" 
+                                                onclick="linkAccount('${child.id}', '${(child.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                                            <i class="bi bi-link-45deg me-1"></i> Link
+                                        </button>
+                                    </div>
+                                </div>
+                            `;}).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Add manager accounts without children to standalone accounts
+                standaloneAccounts.push(manager);
+            }
+        });
+        
+        // Add standalone accounts section if there are any
+        if (standaloneAccounts.length > 0) {
+            html += `
+                <div class="standalone-accounts mb-3 ms-3">
+                    <div class="account-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm toggle-children me-2" aria-expanded="false">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <i class="bi bi-diagram-3 me-2"></i>
+                            <strong>Standalone Accounts</strong>
+                            <span class="badge bg-info ms-1">${standaloneAccounts.length} accounts</span>
+                        </div>
+                    </div>
+                    <div class="child-accounts ps-4 mt-2" style="display: none;">
+                        ${standaloneAccounts.map(account => `
+                            <div class="account-item p-2 mb-2" data-account-id="${account.id}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                                        <div class="small text-muted">Account ID: ${account.id}</div>
+                                        ${account.is_manager ? '<span class="badge bg-secondary ms-1">Manager</span>' : ''}
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" 
+                                            onclick="linkAccount('${account.id}', '${(account.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                                        <i class="bi bi-link-45deg me-1"></i> Link
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Close platform connection div
+        html += `
+                </div>
+            </div>
+        `;
+        
+        // If no accounts found
+        if (managerAccounts.length === 0 && standaloneAccounts.length === 0) {
+            html = `
+                <div class="alert alert-info">
+                    No available accounts found.
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+        // Setup toggle functionality for manager accounts
+        document.querySelectorAll('.toggle-children').forEach(button => {
+            button.addEventListener('click', function() {
+                // Get the parent manager account
+                const parent = this.closest('.manager-account, .standalone-accounts');
+                const childAccounts = parent.querySelector('.child-accounts');
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                
+                
+                // Toggle visibility
+                if (isExpanded) {
+                    childAccounts.style.display = 'none';
+                    this.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                    this.setAttribute('aria-expanded', 'false');
+                    
+                    // If this is a manager account, change folder icon
+                    if (parent.classList.contains('manager-account')) {
+                        parent.querySelector('.manager-header .bi-folder-open')?.classList.replace('bi-folder-open', 'bi-folder');
+                    }
+                } else {
+                    childAccounts.style.display = 'block';
+                    this.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    this.setAttribute('aria-expanded', 'true');
+                    
+                    // If this is a manager account, change folder icon
+                    if (parent.classList.contains('manager-account')) {
+                        parent.querySelector('.manager-header .bi-folder')?.classList.replace('bi-folder', 'bi-folder-open');
+                    }
+                }
+            });
+        });
+    }
+    
+    // Function to render flat list of accounts (no hierarchy)
+    function renderFlatAccounts(accounts, container) {
+        if (accounts.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    No available accounts found.
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="list-group">
+                ${accounts.map(account => `
+                    <div class="list-group-item d-flex justify-content-between align-items-center" data-account-id="${account.id}">
+                        <div>
+                            <strong style="font-size: 1rem; display: block; color: #0056b3;">${account.name || 'Google Ads Account'}</strong>
+                            <div class="small text-muted">Account ID: ${account.id}</div>
+                        </div>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="linkAccount('${account.id}', '${(account.name || 'Unknown Account').replace(/'/g, "\\'")}')">
+                            <i class="bi bi-link-45deg me-1"></i> Link
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
+    // Function to setup account search
+    function setupAccountSearch() {
+        const searchInput = document.getElementById('accountSearchInput');
+        if (!searchInput) return;
+        
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const allAccounts = document.querySelectorAll('.account-item, .list-group-item[data-account-id]');
+            const allManagers = document.querySelectorAll('.manager-account, .standalone-accounts');
+            
+            // Remove all highlights first
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.classList.remove('highlight');
+            });
+            
+            // Hide all managers first
+            allManagers.forEach(manager => {
+                manager.style.display = 'none';
+                manager.querySelector('.child-accounts').style.display = 'none';
+                manager.querySelector('.toggle-children').innerHTML = '<i class="bi bi-chevron-right"></i>';
+                manager.querySelector('.toggle-children').setAttribute('aria-expanded', 'false');
+            });
+            
+            let matchFound = false;
+            
+            if (searchTerm) {
+                // Search through all accounts
+                allAccounts.forEach(account => {
+                    const accountName = account.querySelector('strong').textContent.toLowerCase();
+                    const accountId = account.getAttribute('data-account-id').toLowerCase();
+                    
+                    account.style.display = 'none'; // Hide by default
+                    
+                    // Check if this account matches search
+                    if (accountName.includes(searchTerm) || accountId.includes(searchTerm)) {
+                        account.style.display = ''; // Show this account
+                        matchFound = true;
+                        
+                        // Show parent manager account if in hierarchy
+                        const parentManager = account.closest('.manager-account, .standalone-accounts');
+                        if (parentManager) {
+                            parentManager.style.display = '';
+                            parentManager.querySelector('.child-accounts').style.display = 'block';
+                            parentManager.querySelector('.toggle-children').innerHTML = '<i class="bi bi-chevron-down"></i>';
+                            parentManager.querySelector('.toggle-children').setAttribute('aria-expanded', 'true');
+                            
+                            // Update folder icon if it's a manager account
+                            if (parentManager.classList.contains('manager-account')) {
+                                parentManager.querySelector('.manager-header .bi-folder')?.classList.replace('bi-folder', 'bi-folder-open');
+                            }
+                        }
+                        
+                        // Highlight matching text
+                        const nameEl = account.querySelector('strong');
+                        const idEl = account.querySelector('.small.text-muted');
+                        
+                        // Highlight name if matches
+                        if (accountName.includes(searchTerm)) {
+                            nameEl.classList.add('highlight');
+                        }
+                        
+                        // Highlight ID if matches
+                        if (accountId.includes(searchTerm)) {
+                            idEl.classList.add('highlight');
+                        }
+                    }
+                });
+            } else {
+                // If search is empty, show all manager accounts but keep children collapsed
+                allManagers.forEach(manager => {
+                    manager.style.display = '';
+                });
+                matchFound = true;
+            }
+            
+            // Show message if no matches
+            const noMatchMessage = document.getElementById('noMatchMessage');
+            if (!matchFound) {
+                if (!noMatchMessage) {
+                    const message = document.createElement('div');
+                    message.id = 'noMatchMessage';
+                    message.className = 'alert alert-warning';
+                    message.textContent = 'No accounts match your search.';
+                    document.getElementById('accountsContainer').appendChild(message);
+                }
+            } else {
+                if (noMatchMessage) {
+                    noMatchMessage.remove();
+                }
+            }
+        });
+        
+        // Auto-expand the manager with the most child accounts
+        const managersWithChildren = [...document.querySelectorAll('.manager-account')].filter(manager => {
+            const childCount = manager.querySelectorAll('.account-item').length;
+            return childCount > 0;
+        });
+        
+        console.log(`Found ${managersWithChildren.length} managers with children`);
+        
+        if (managersWithChildren.length > 0) {
+            // Sort by child count in descending order
+            managersWithChildren.sort((a, b) => {
+                const aCount = a.querySelectorAll('.account-item').length;
+                const bCount = b.querySelectorAll('.account-item').length;
+                return bCount - aCount;
+            });
+            
+            // Get the manager with the most children
+            const bestManager = managersWithChildren[0];
+            const childCount = bestManager.querySelectorAll('.account-item').length;
+            console.log(`Auto-expanding manager with ${childCount} child accounts`);
+            
+            // Auto expand it
+            const toggleButton = bestManager.querySelector('.toggle-children');
+            const childAccounts = bestManager.querySelector('.child-accounts');
+            
+            childAccounts.style.display = 'block';
+            toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+            toggleButton.setAttribute('aria-expanded', 'true');
+            
+            // Update folder icon
+            const folderIcon = bestManager.querySelector('.manager-header .bi-folder');
+            if (folderIcon) folderIcon.classList.replace('bi-folder', 'bi-folder-open');
+        }
+    }
+    
+    // Window-level functions for onclick handlers for linking accounts
+    window.linkAccount = function(accountId, accountName) {
+        // Get the platform ID from the modal data
+        const platformId = document.getElementById('managePlatformModal').getAttribute('data-platform-id');
+        const clientId = '{{ client.id }}';
+        
+        if (!platformId) {
+            console.error('Platform ID is missing');
+            alert('Error: Unable to determine platform type. Please refresh the page and try again.');
+            return;
+        }
+        
+        // Create and submit a form to link this account
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/client/${clientId}/platform/${platformId}/add-account/${accountId}/`;
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add account name
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.name = 'account_name';
+        nameInput.value = accountName;
+        form.appendChild(nameInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    };
+    
+    window.removeAccount = function(accountId, accountName) {
+        if (confirm(`Are you sure you want to remove ${accountName} from this client?`)) {
+            // Create and submit a form to remove this account
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/client-platform-account/${accountId}/remove/`;
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+    
+    // Resync accounts functionality
+    const resyncAccountsBtn = document.getElementById('resyncAccountsBtn');
+    if (resyncAccountsBtn) {
+        resyncAccountsBtn.addEventListener('click', function() {
+            const platformId = document.getElementById('managePlatformModal').getAttribute('data-platform-id');
+            
+            if (!platformId) {
+                alert('Platform ID not found. Please close and reopen the modal.');
+                return;
+            }
+            
+            // Show loading state
+            const originalHtml = resyncAccountsBtn.innerHTML;
+            resyncAccountsBtn.disabled = true;
+            resyncAccountsBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i> Syncing...';
+            
+            // Add CSS for spin animation if not already present
+            if (!document.getElementById('resync-spinner-css')) {
+                const style = document.createElement('style');
+                style.id = 'resync-spinner-css';
+                style.textContent = `
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    .spin { animation: spin 1s linear infinite; }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Show loading in account lists
+            connectedAccountsList.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Syncing accounts...</span>
+                </div>
+            `;
+            
+            availableAccountsList.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Syncing accounts...</span>
+                </div>
+            `;
+            
+            // Make resync API call
+            fetch(`/api/platform-accounts-resync/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    platform_id: platformId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Restore button state
+                resyncAccountsBtn.disabled = false;
+                resyncAccountsBtn.innerHTML = originalHtml;
+                
+                if (data.success) {
+                    // Show success message
+                    const successAlert = document.createElement('div');
+                    successAlert.className = 'alert alert-success alert-dismissible fade show';
+                    successAlert.innerHTML = `
+                        <i class="bi bi-check-circle me-1"></i>
+                        Accounts synced successfully! Found ${data.accounts_synced || 0} accounts.
+                        <button type="button" class="btn-close" data-coreui-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.modal-body').insertBefore(successAlert, document.querySelector('.modal-body').firstChild);
+                    
+                    // Auto-dismiss success alert after 5 seconds
+                    setTimeout(() => {
+                        if (successAlert.parentNode) {
+                            successAlert.remove();
+                        }
+                    }, 5000);
+                    
+                    // Reload the account lists with force refresh
+                    const platformSlug = document.querySelector('.manage-platform-btn[data-platform-id="' + platformId + '"]')?.getAttribute('data-platform-slug');
+                    if (platformSlug) {
+                        loadConnectedAccounts(platformSlug);
+                        loadAvailableAccounts(platformId, true); // Force refresh after resync
+                    }
+                } else {
+                    // Show error message
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                    errorAlert.innerHTML = `
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Error syncing accounts: ${data.error || 'Unknown error occurred'}
+                        <button type="button" class="btn-close" data-coreui-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.modal-body').insertBefore(errorAlert, document.querySelector('.modal-body').firstChild);
+                    
+                    // Reset account lists to show error state
+                    connectedAccountsList.innerHTML = `
+                        <div class="text-center py-3 text-danger">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">Error loading accounts. Please try again.</p>
+                        </div>
+                    `;
+                    
+                    availableAccountsList.innerHTML = `
+                        <div class="text-center py-3 text-danger">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">Error loading accounts. Please try again.</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Resync error:', error);
+                
+                // Restore button state
+                resyncAccountsBtn.disabled = false;
+                resyncAccountsBtn.innerHTML = originalHtml;
+                
+                // Show error message
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                errorAlert.innerHTML = `
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Failed to sync accounts. Please check your connection and try again.
+                    <button type="button" class="btn-close" data-coreui-dismiss="alert"></button>
+                `;
+                document.querySelector('.modal-body').insertBefore(errorAlert, document.querySelector('.modal-body').firstChild);
+                
+                // Reset account lists to show error state
+                connectedAccountsList.innerHTML = `
+                    <div class="text-center py-3 text-danger">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Error loading accounts. Please try again.</p>
+                    </div>
+                `;
+                
+                availableAccountsList.innerHTML = `
+                    <div class="text-center py-3 text-danger">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Error loading accounts. Please try again.</p>
+                    </div>
+                `;
+            });
+        });
+    }
+    
+    // Function to refresh accounts with force refresh
+    function refreshAccounts() {
+        const modal = document.getElementById('managePlatformModal');
+        const platformId = modal.getAttribute('data-platform-id');
+        
+        if (!platformId) {
+            console.error('No platform ID found');
+            return;
+        }
+        
+        // Show loading state on refresh button
+        const refreshBtn = document.getElementById('refreshAccountsBtn');
+        const originalContent = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm"></i> Refreshing...';
+        refreshBtn.disabled = true;
+        
+        // Call loadAvailableAccounts with force refresh
+        loadAvailableAccounts(platformId, true)
+            .then(() => {
+                console.log('Accounts refreshed successfully');
+            })
+            .catch(error => {
+                console.error('Error refreshing accounts:', error);
+            })
+            .finally(() => {
+                // Restore refresh button
+                refreshBtn.innerHTML = originalContent;
+                refreshBtn.disabled = false;
+            });
+    }
+    </script>
+{% endblock %}

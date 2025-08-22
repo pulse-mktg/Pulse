@@ -1,0 +1,401 @@
+<!-- budget_detail.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .progress-thin {
+        height: 8px;
+    }
+    .spend-card {
+        border-left: 4px solid #321fdb;
+    }
+    .expected-card {
+        border-left: 4px solid #3399ff;
+    }
+    .variance-card {
+        border-left: 4px solid #e55353;
+    }
+    .time-elapsed-card {
+        border-left: 4px solid #f9b115;
+    }
+    .allocation-item {
+        border-left: 3px solid #ced4da;
+        padding-left: 10px;
+        margin-bottom: 10px;
+    }
+    .platform-allocation {
+        border-left-color: #321fdb;
+    }
+    .account-allocation {
+        border-left-color: #2eb85c;
+    }
+    .campaign-allocation {
+        border-left-color: #f9b115;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'budget_dashboard' %}">Budgets</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ budget.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <h1 class="page-title mb-0">{{ budget.name }}</h1>
+            <div>
+                <a href="{% url 'edit_budget' budget.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i> Edit Budget
+                </a>
+                <a href="{% url 'create_budget_alert' budget.id %}" class="btn btn-outline-primary ms-2">
+                    <i class="bi bi-bell me-1"></i> Add Alert
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Overview -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Budget Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Budget Period:</dt>
+                            <dd class="col-sm-8">{{ budget.start_date|date:"M d, Y" }} - {{ budget.end_date|date:"M d, Y" }}</dd>
+                            
+                            <dt class="col-sm-4">Frequency:</dt>
+                            <dd class="col-sm-8">{{ budget.get_frequency_display }}</dd>
+                            
+                            <dt class="col-sm-4">Created By:</dt>
+                            <dd class="col-sm-8">{{ budget.created_by.get_full_name|default:budget.created_by.username }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Entity Type:</dt>
+                            <dd class="col-sm-8">
+                                {% if budget.client %}
+                                    <span class="badge bg-primary">Client</span> {{ budget.client.name }}
+                                {% elif budget.client_group %}
+                                    <span class="badge bg-info">Group</span> {{ budget.client_group.name }}
+                                {% else %}
+                                    <span class="badge bg-secondary">Tenant-wide</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-4">Status:</dt>
+                            <dd class="col-sm-8">
+                                {% if status == 'on-track' %}
+                                    <span class="badge bg-success">On Track</span>
+                                {% elif status == 'underspend' %}
+                                    <span class="badge bg-warning">Underspending</span>
+                                {% elif status == 'overspend' %}
+                                    <span class="badge bg-danger">Overspending</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-4">Total Budget:</dt>
+                            <dd class="col-sm-8">${{ budget.amount|floatformat:2 }}</dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if budget.description %}
+                <div class="mt-2">
+                    <strong>Description:</strong>
+                    <p>{{ budget.description }}</p>
+                </div>
+                {% endif %}
+                
+                <!-- Progress Bar -->
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <div class="fw-bold">Budget Progress</div>
+                        <div>${{ current_spend|floatformat:2 }} of ${{ budget.amount|floatformat:2 }} ({{ spend_percentage|floatformat:1 }}%)</div>
+                    </div>
+                    <div class="progress progress-thin mb-2">
+                        <div class="progress-bar" role="progressbar" style="width: {{ spend_percentage }}%" 
+                             aria-valuenow="{{ spend_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        <!-- Expected spend marker -->
+                        <div class="progress-expected" style="left: {{ expected_percentage }}%; position: absolute; width: 2px; height: 100%; background-color: #ff0000;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <div>Start: {{ budget.start_date|date:"M d" }}</div>
+                        <div>Today</div>
+                        <div>End: {{ budget.end_date|date:"M d" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Time Elapsed</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="display-4 fw-bold">{{ budget.days_elapsed }} / {{ budget.days_in_period }}</div>
+                    <div class="text-muted">Days ({{ time_elapsed_percentage|floatformat:1 }}%)</div>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar bg-info" role="progressbar" 
+                         style="width: {{ time_elapsed_percentage }}%" 
+                         aria-valuenow="{{ budget.days_elapsed }}" aria-valuemin="0" aria-valuemax="{{ budget.days_in_period }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card spend-card h-100">
+            <div class="card-body">
+                <div class="text-muted mb-1">Current Spend</div>
+                <div class="fs-4 fw-bold">${{ current_spend|floatformat:2 }}</div>
+                <div class="text-muted small">{{ spend_percentage|floatformat:1 }}% of total budget</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card expected-card h-100">
+            <div class="card-body">
+                <div class="text-muted mb-1">Expected Spend</div>
+                <div class="fs-4 fw-bold">${{ expected_spend|floatformat:2 }}</div>
+                <div class="text-muted small">{{ expected_percentage|floatformat:1 }}% of total budget</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card variance-card h-100">
+            <div class="card-body">
+                <div class="text-muted mb-1">Variance</div>
+                <div class="fs-4 fw-bold {% if variance < 0 %}text-success{% elif variance > 0 %}text-danger{% endif %}">
+                    {% if variance >= 0 %}+{% endif %}${{ variance|floatformat:2 }}
+                </div>
+                <div class="text-muted small">
+                    {% if variance_percentage >= 0 %}+{% endif %}{{ variance_percentage|floatformat:1 }}% from expected
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card time-elapsed-card h-100">
+            <div class="card-body">
+                <div class="text-muted mb-1">Daily Avg. Spend</div>
+                <div class="text-center mb-3">
+                    <div class="text-muted small">
+                        ${{ daily_avg_spend|floatformat:2 }} of ${{ daily_budget_amount|floatformat:2 }}/day
+                    </div>
+                    <div class="text-muted">Days ({{ time_elapsed_percentage|floatformat:1 }}%)</div>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar bg-info" role="progressbar" 
+                         style="width: {{ time_elapsed_percentage }}%" 
+                         aria-valuenow="{{ budget.days_elapsed }}" aria-valuemin="0" aria-valuemax="{{ budget.days_in_period }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spend Chart -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Spend Tracking</h5>
+            </div>
+            <div class="card-body">
+                <div id="budgetChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Allocations -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Budget Allocations</h5>
+            </div>
+            <div class="card-body">
+                {% if allocations %}
+                <div class="list-group">
+                    {% for allocation in allocations %}
+                    <div class="allocation-item {% if allocation.campaign %}campaign-allocation{% elif allocation.platform_account %}account-allocation{% elif allocation.platform_type %}platform-allocation{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if allocation.campaign %}
+                                    <div class="fw-bold">Campaign: {{ allocation.campaign.name }}</div>
+                                    <div class="small text-muted">{{ allocation.campaign.client_account.platform_client_name }}</div>
+                                {% elif allocation.platform_account %}
+                                    <div class="fw-bold">Account: {{ allocation.platform_account.platform_client_name }}</div>
+                                    <div class="small text-muted">{{ allocation.platform_account.platform_connection.platform_type.name }}</div>
+                                {% elif allocation.platform_type %}
+                                    <div class="fw-bold">Platform: {{ allocation.platform_type.name }}</div>
+                                {% else %}
+                                    <div class="fw-bold">Unspecified Allocation</div>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold">${{ allocation.amount|floatformat:2 }}</div>
+                                {% if allocation.percentage %}
+                                <div class="small text-muted">{{ allocation.percentage }}% of budget</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-pie-chart" style="font-size: 2rem; color: #8a93a2;"></i>
+                    <p class="mt-2 text-muted">No specific allocations defined.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Budget Alerts</h5>
+                <a href="{% url 'create_budget_alert' budget.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-bell me-1"></i> Add Alert
+                </a>
+            </div>
+            <div class="card-body">
+                {% if alerts %}
+                <div class="list-group">
+                    {% for alert in alerts %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">
+                                    <i class="bi {% if alert.alert_type == 'underspend' %}bi-arrow-down-circle{% elif alert.alert_type == 'overspend' %}bi-arrow-up-circle{% else %}bi-graph-up{% endif %} me-1"></i>
+                                    {{ alert.get_alert_type_display }}
+                                </div>
+                                <div class="small text-muted">Threshold: {{ alert.threshold }}%</div>
+                            </div>
+                            <div>
+                                {% if alert.is_email_enabled %}
+                                <span class="badge bg-success me-1">Email</span>
+                                {% endif %}
+                                {% if alert.is_dashboard_enabled %}
+                                <span class="badge bg-info">Dashboard</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-bell" style="font-size: 2rem; color: #8a93a2;"></i>
+                    <p class="mt-2 text-muted">No alerts configured for this budget.</p>
+                    <a href="{% url 'create_budget_alert' budget.id %}" class="btn btn-sm btn-primary mt-2">
+                        <i class="bi bi-bell me-1"></i> Create Alert
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chartData = {{ chart_data|safe }};
+        const expectedData = {{ expected_data|safe }};
+        
+        // Prepare data for Chart.js
+        const dates = chartData.map(item => item.date);
+        const spendValues = chartData.map(item => item.amount);
+        const expectedValues = expectedData.map(item => item.amount);
+        
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Actual Spend',
+                        data: spendValues,
+                        backgroundColor: 'rgba(50, 31, 219, 0.1)',
+                        borderColor: 'rgba(50, 31, 219, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Expected Spend',
+                        data: expectedValues,
+                        borderColor: 'rgba(51, 153, 255, 1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.raw.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

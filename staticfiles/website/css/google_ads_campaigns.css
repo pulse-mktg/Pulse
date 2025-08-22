@@ -1,0 +1,54 @@
+/* Google Ads Campaigns CSS */
+.dashboard-card {
+    transition: transform 0.2s;
+    overflow: hidden;
+}
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+.metric-card {
+    height: 100%;
+}
+.performance-indicator {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+}
+.performance-positive {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+.performance-negative {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+.performance-neutral {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+.campaign-stats {
+    font-size: 0.875rem;
+}
+.table-campaigns th, .table-campaigns td {
+    vertical-align: middle;
+}
+.campaign-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.campaign-status-active {
+    background-color: #28a745;
+}
+.campaign-status-paused {
+    background-color: #ffc107;
+}
+.campaign-status-removed {
+    background-color: #dc3545;
+}
+.status-filter .btn {
+    border-radius: 20px;
+}

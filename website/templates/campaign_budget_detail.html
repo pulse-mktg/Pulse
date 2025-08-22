@@ -1,0 +1,133 @@
+<!-- campaign_budget_dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-2">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'client_detail' client.id %}">{{ client.name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Campaign Budgets</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex align-items-center justify-content-between">
+            <h1 class="page-title mb-0">Campaign Budgets</h1>
+            <div>
+                <a href="{% url 'create_budget' %}?client_id={{ client.id }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Create Budget
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Account</label>
+                <select name="account_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Accounts</option>
+                    {% for account in accounts %}
+                    <option value="{{ account.id }}" {% if selected_account == account.id %}selected{% endif %}>
+                        {{ account.platform_client_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Period</label>
+                <select name="period" class="form-select" onchange="this.form.submit()">
+                    <option value="month">Current Month</option>
+                    <option value="week">Current Week</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-secondary ms-auto" onclick="resetFilters()">
+                    <i class="bi bi-x-circle me-1"></i> Reset Filters
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Campaign Budget Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Campaign Budget Performance</h5>
+    </div>
+    <div class="card-body">
+        {% if campaign_data %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Campaign</th>
+                        <th>Account</th>
+                        <th>Budget</th>
+                        <th>Spend</th>
+                        <th>Expected</th>
+                        <th>Pacing</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in campaign_data %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'google_ads_campaign_detail' client.id data.campaign.client_account.id data.campaign.id %}" class="fw-bold text-decoration-none">
+                                {{ data.campaign.name }}
+                            </a>
+                        </td>
+                        <td>{{ data.campaign.client_account.platform_client_name }}</td>
+                        <td>
+                            ${{ data.budget_amount|floatformat:2 }}
+                            {% if data.budget %}
+                            <div class="small text-muted">From: {{ data.budget.name }}</div>
+                            {% else %}
+                            <div class="small text-muted">Campaign Budget</div>
+                            {% endif %}
+                        </td>
+                        <td>${{ data.spend_amount|floatformat:2 }} ({{ data.spend_percentage|floatformat:1 }}%)</td>
+                        <td>${{ data.expected_spend|floatformat:2 }} ({{ data.expected_percentage|floatformat:1 }}%)</td>
+                        <td>{{ data.pacing|floatformat:1 }}%</td>
+                        <td>
+                            {% if data.status == 'on-track' %}
+                                <span class="badge bg-success">On Track</span>
+                            {% elif data.status == 'underspend' %}
+                                <span class="badge bg-warning">Underspending</span>
+                            {% elif data.status == 'overspend' %}
+                                <span class="badge bg-danger">Overspending</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-cash" style="font-size: 3rem; color: #8a93a2;"></i>
+            <p class="mt-3 text-muted">No campaign budget data available.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function resetFilters() {
+        window.location.href = "{% url 'campaign_budget_dashboard' client.id %}";
+    }
+</script>
+{% endblock %}
