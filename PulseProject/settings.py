@@ -187,7 +187,8 @@ GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
 GOOGLE_OAUTH_SCOPES = [
     'https://www.googleapis.com/auth/adwords',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile'
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'openid'
 ]
 
 # Google Ads settings
