@@ -1086,11 +1086,30 @@ def initiate_platform_connection(request, client_id, platform_id):
     
     # Handle different platform types
     if platform.slug == 'google-ads':
-        # Google Ads OAuth flow
-        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
-            scopes=settings.GOOGLE_OAUTH_SCOPES
-        )
+        # Google Ads OAuth flow with environment-aware configuration
+        if settings.ENVIRONMENT == 'production':
+            # Use environment variables in production
+            if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                raise ValueError("Google OAuth credentials are not configured in environment variables")
+                
+            client_config = {
+                "web": {
+                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token"
+                }
+            }
+            flow = google_auth_oauthlib.flow.Flow.from_client_config(
+                client_config,
+                scopes=settings.GOOGLE_OAUTH_SCOPES
+            )
+        else:
+            # Use client secrets file in development
+            flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+                getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET_PATH', 'google_client_secret.json'),
+                scopes=settings.GOOGLE_OAUTH_SCOPES
+            )
         
         # The redirect URI must match one of the authorized redirect URIs
         # for the OAuth 2.0 client, which you configured in the API Console
@@ -1142,12 +1161,32 @@ def oauth_callback(request):
     # Handle callback for different platform types
     if platform.slug == 'google-ads':
         try:
-            # Complete the OAuth flow and get credentials
-            flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-                settings.GOOGLE_OAUTH_CLIENT_SECRET_PATH,
-                scopes=settings.GOOGLE_OAUTH_SCOPES,
-                state=state
-            )
+            # Complete the OAuth flow and get credentials with environment-aware configuration
+            if settings.ENVIRONMENT == 'production':
+                # Use environment variables in production
+                if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+                    raise ValueError("Google OAuth credentials are not configured in environment variables")
+                    
+                client_config = {
+                    "web": {
+                        "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token"
+                    }
+                }
+                flow = google_auth_oauthlib.flow.Flow.from_client_config(
+                    client_config,
+                    scopes=settings.GOOGLE_OAUTH_SCOPES,
+                    state=state
+                )
+            else:
+                # Use client secrets file in development
+                flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+                    getattr(settings, 'GOOGLE_OAUTH_CLIENT_SECRET_PATH', 'google_client_secret.json'),
+                    scopes=settings.GOOGLE_OAUTH_SCOPES,
+                    state=state
+                )
             
             callback_url = request.build_absolute_uri(reverse('oauth_callback'))
             flow.redirect_uri = callback_url
