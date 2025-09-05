@@ -343,7 +343,7 @@ class GoogleAdsAccountService:
                 'Content-Type': 'application/json'
             }
             
-            url = f"https://googleads.googleapis.com/v20/customers/{customer_id}/googleAds:search"
+            url = f"https://googleads.googleapis.com/v14/customers/{customer_id}/googleAds:search"
             
             # Simple query to test access
             query = """
@@ -383,7 +383,7 @@ class GoogleAdsAccountService:
                 'Content-Type': 'application/json'
             }
             
-            url = f"https://googleads.googleapis.com/v20/customers/{seed_customer_id}/googleAds:search"
+            url = f"https://googleads.googleapis.com/v14/customers/{seed_customer_id}/googleAds:search"
             
             # Query to find all customers in the hierarchy
             query = """
@@ -771,7 +771,7 @@ class GoogleAdsAccountService:
                 'Content-Type': 'application/json'
             }
             
-            url = f"https://googleads.googleapis.com/v20/customers/{target_customer_id}/googleAds:search"
+            url = f"https://googleads.googleapis.com/v14/customers/{target_customer_id}/googleAds:search"
             
             # Query to get customer hierarchy
             query = """
@@ -859,7 +859,7 @@ class GoogleAdsAccountService:
                 'Content-Type': 'application/json'
             }
             
-            url = f"https://googleads.googleapis.com/v20/customers/{target_customer_id}/googleAds:search"
+            url = f"https://googleads.googleapis.com/v14/customers/{target_customer_id}/googleAds:search"
             
             logger.info(f"🔍 Getting single customer info for {target_customer_id}")
             

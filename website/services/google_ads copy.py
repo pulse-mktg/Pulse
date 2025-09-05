@@ -375,7 +375,7 @@ class GoogleAdsService(PlatformService):
                 }
                 
                 # Use the current v19 API endpoint
-                list_url = 'https://googleads.googleapis.com/v19/customers:listAccessibleCustomers'
+                list_url = 'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers'
                 
                 response = requests.get(list_url, headers=headers)
                 
@@ -413,7 +413,7 @@ class GoogleAdsService(PlatformService):
                 }
                 
                 # Check if the test account exists and is accessible
-                account_url = f'https://googleads.googleapis.com/v19/customers/{formatted_account_id}'
+                account_url = f'https://googleads.googleapis.com/v14/customers/{formatted_account_id}'
                 
                 response = requests.get(account_url, headers=headers)
                 

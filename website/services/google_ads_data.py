@@ -367,7 +367,7 @@ class GoogleAdsDataService:
             # Use the manager account for login, but query the specific client account
             try:
                 # Check for available accounts under this manager
-                list_url = f"https://googleads.googleapis.com/v19/customers:listAccessibleCustomers"
+                list_url = f"https://googleads.googleapis.com/v14/customers:listAccessibleCustomers"
                 
                 response = requests.get(list_url, headers=headers, timeout=10)
                 
@@ -396,7 +396,7 @@ class GoogleAdsDataService:
                 logger.warning(f"Error checking for accessible accounts: {str(e)}")
             
             # Define the endpoint - ensure customer_id is properly formatted without hyphens
-            api_url = f"https://googleads.googleapis.com/v19/customers/{customer_id}/googleAds:search"
+            api_url = f"https://googleads.googleapis.com/v14/customers/{customer_id}/googleAds:search"
             
             # Log complete details about the request
             logger.info(f"FETCHING CAMPAIGNS: API URL: {api_url}")
@@ -831,7 +831,7 @@ class GoogleAdsDataService:
             logger.info(f"Retrying campaign fetch with clean ID: {customer_id}")
             
             # Define the endpoint with the clean ID
-            api_url = f"https://googleads.googleapis.com/v19/customers/{customer_id}/googleAds:search"
+            api_url = f"https://googleads.googleapis.com/v14/customers/{customer_id}/googleAds:search"
             
             # Simplified query with just basic fields
             query = """
