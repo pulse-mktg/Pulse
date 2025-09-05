@@ -1114,6 +1114,11 @@ def initiate_platform_connection(request, client_id, platform_id):
         # The redirect URI must match one of the authorized redirect URIs
         # for the OAuth 2.0 client, which you configured in the API Console
         callback_url = request.build_absolute_uri(reverse('oauth_callback'))
+        
+        # Force HTTPS for production OAuth flows
+        if settings.ENVIRONMENT == 'production' and callback_url.startswith('http://'):
+            callback_url = callback_url.replace('http://', 'https://', 1)
+            
         flow.redirect_uri = callback_url
         
         # Generate the authorization URL and redirect the user
@@ -1189,10 +1194,20 @@ def oauth_callback(request):
                 )
             
             callback_url = request.build_absolute_uri(reverse('oauth_callback'))
+            
+            # Force HTTPS for production OAuth flows
+            if settings.ENVIRONMENT == 'production' and callback_url.startswith('http://'):
+                callback_url = callback_url.replace('http://', 'https://', 1)
+                
             flow.redirect_uri = callback_url
             
             # Use the authorization response in the callback to get the tokens
             authorization_response = request.build_absolute_uri()
+            
+            # Force HTTPS for production OAuth flows  
+            if settings.ENVIRONMENT == 'production' and authorization_response.startswith('http://'):
+                authorization_response = authorization_response.replace('http://', 'https://', 1)
+                
             flow.fetch_token(authorization_response=authorization_response)
             
             # Get credentials and store them

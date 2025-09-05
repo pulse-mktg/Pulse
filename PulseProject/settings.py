@@ -172,6 +172,11 @@ if os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true':
 if os.environ.get('CSRF_COOKIE_SECURE', 'False').lower() == 'true':
     CSRF_COOKIE_SECURE = True
 
+# Force HTTPS for production OAuth flows
+if ENVIRONMENT == 'production':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_TLS = True
+
 # Environment configuration
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
 IS_DEVELOPMENT = ENVIRONMENT == 'development'
