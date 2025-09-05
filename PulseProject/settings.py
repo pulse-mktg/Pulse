@@ -172,14 +172,14 @@ if os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true':
 if os.environ.get('CSRF_COOKIE_SECURE', 'False').lower() == 'true':
     CSRF_COOKIE_SECURE = True
 
+# Environment configuration
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+IS_DEVELOPMENT = ENVIRONMENT == 'development'
+
 # Force HTTPS for production OAuth flows
 if ENVIRONMENT == 'production':
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_TLS = True
-
-# Environment configuration
-ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
-IS_DEVELOPMENT = ENVIRONMENT == 'development'
 
 # Google OAuth settings
 GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
