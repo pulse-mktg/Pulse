@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
+import googleapiclient.discovery
 import logging
 import os
 import datetime
@@ -1213,14 +1214,36 @@ def oauth_callback(request):
             # Get credentials and store them
             credentials = flow.credentials
             
-            # Save the connection
+            # Fetch user information from Google
+            logger = logging.getLogger(__name__)
+            
+            user_info = {'name': 'Unknown User', 'email': 'unknown@example.com'}
+            try:
+                # Build OAuth2 service to get user info
+                oauth_service = googleapiclient.discovery.build(
+                    'oauth2', 'v2', 
+                    credentials=credentials,
+                    cache_discovery=False
+                )
+                user_info_response = oauth_service.userinfo().get().execute()
+                user_info = {
+                    'name': user_info_response.get('name', 'Unknown User'),
+                    'email': user_info_response.get('email', 'unknown@example.com')
+                }
+                logger.info(f"Retrieved user info: {user_info['email']}")
+            except Exception as e:
+                logger.warning(f"Could not retrieve user info: {str(e)}")
+            
+            # Save the connection with user info
             connection = PlatformConnection(
                 tenant=client.tenant,
                 platform_type=platform,
                 connected_user=request.user,
                 access_token=credentials.token,
                 refresh_token=credentials.refresh_token,
-                token_expiry=datetime.datetime.fromtimestamp(credentials.expiry.timestamp()) if credentials.expiry else None
+                token_expiry=datetime.datetime.fromtimestamp(credentials.expiry.timestamp()) if credentials.expiry else None,
+                platform_account_name=user_info.get('name'),
+                platform_account_email=user_info.get('email')
             )
             connection.save()
             
